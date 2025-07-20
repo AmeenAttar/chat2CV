@@ -1,0 +1,90 @@
+---
+alwaysApply: false
+---
+
+
+# Chat-to-CV App Project Overview
+
+This document provides a high-level overview of the "Chat-to-CV" iOS application, its core functionality, and the current development strategy. I am a single-person team building this app.
+
+## Project Goal
+An iOS application that allows users to chat with an AI assistant to build and refine their resume.
+
+## Key Epics & Functionality
+The project is structured around several core epics:
+
+* **Epic 1: User Authentication (Sign-in/Sign-up)**: Users can sign in or sign up to access the app.
+* **Epic 2: Resume Template Selection**: Users choose from a catalog of resume templates.
+* **Epic 3: Voice AI Assistant UI**: Users interact with a voice chat interface.
+* **Epic 4: Voice AI Assistant Agent (Voiceflow Integration)**: A Voiceflow-powered conversational AI collects resume information via speech-to-text and provides responses via text-to-speech.
+* **Epic 5: Resume Writer AI Agent**: This is the core AI. It takes information collected by Voiceflow, rephrases it to match the selected resume template style, and fills it into the template. This agent will utilize LangChain and LlamaIndex for RAG (Retrieval Augmented Generation).
+* **Epic 6: Live Resume Building Display**: The resume updates live on the screen as the user provides information.
+* **Epic 7: Payment & Download**: Users pay for and download their generated resume.
+* **Epic 8: PDF/Word Document Generation**: The app generates professional PDF or Word documents of the resume.
+
+## Current Development Strategy (Single-Person Team - MVP Focus)
+
+As a single-person team, the current strategy emphasizes building a Minimum Viable Product (MVP) first, focusing on core functionality before scaling or adding all advanced features.
+
+* **Overall Approach**: Focus on **MVP (Minimum Viable Product)**. Get core features working, then iterate.
+* **Development Priority**: **Backend-first approach**, specifically prioritizing the **Resume Writer AI Agent (Epic 5)**. This is the heart of the application.
+    * Initial work should be on the LangChain/LlamaIndex setup and the `/generate-resume-section` API endpoint.
+* **Platform Focus**: **iOS development** as the primary platform, as originally planned. Do not suggest a web app first unless explicitly asked.
+* **Authentication (Epic 1 - MVP)**: Leverage managed services like Firebase Authentication, AWS Cognito, or Auth0 for faster implementation. Avoid building custom auth initially.
+* **Templates (Epic 2 - MVP)**: Start with static asset hosting for templates or a very simple API to list them.
+* **Voice AI (Epic 4 - MVP)**: For the initial MVP, consider a simple **text-based chat interface** to feed input to the backend directly, deferring full Voiceflow integration until the core AI generation is robust.
+* **Live Display (Epic 6 - MVP)**: Implement **polling** from the iOS app to the backend for updates, deferring WebSockets/SSE for later.
+* **Payment (Epic 7 - MVP)**: Implement a **dummy payment screen** for the MVP. Actual payment integration comes later.
+* **Document Generation (Epic 8 - MVP)**: Prioritize **HTML export only** or allowing users to copy text from the live display. Defer robust PDF/DOCX generation (or consider third-party APIs) for later.
+
+## Instructions for Cursor AI
+
+* **Context:** Always refer to this document for a high-level understanding of the Chat-to-CV app.
+* **Suggestions:** When providing code or suggestions, align them with the MVP-first, backend-first, and iOS-focused strategy.
+* **Prioritization:** Help prioritize tasks based on the MVP strategy outlined above.
+* **Technology Stack:** Assume standard modern iOS development (Swift, SwiftUI/UIKit) and Python for the backend (likely FastAPI/Flask for APIs, LangChain/LlamaIndex for AI).
+* **Scope:** Remind me if my requests deviate too much from the current MVP scope or introduce significant complexity for a solo developer.
+* **Questions:** If unsure about a specific implementation detail, ask clarifying questions that help narrow down the scope to an MVP solution.
+# Chat-to-CV App Project Overview
+
+This document provides a high-level overview of the "Chat-to-CV" iOS application, its core functionality, and the current development strategy. I am a single-person team building this app.
+
+## Project Goal
+An iOS application that allows users to chat with an AI assistant to build and refine their resume.
+
+## Key Epics & Functionality
+The project is structured around several core epics:
+
+* **Epic 1: User Authentication (Sign-in/Sign-up)**: Users can sign in or sign up to access the app.
+* **Epic 2: Resume Template Selection**: Users choose from a catalog of resume templates.
+* **Epic 3: Voice AI Assistant UI**: Users interact with a voice chat interface.
+* **Epic 4: Voice AI Assistant Agent (Voiceflow Integration)**: A Voiceflow-powered conversational AI collects resume information via speech-to-text and provides responses via text-to-speech.
+* **Epic 5: Resume Writer AI Agent**: This is the core AI. It takes information collected by Voiceflow, rephrases it to match the selected resume template style, and fills it into the template. This agent will utilize LangChain and LlamaIndex for RAG (Retrieval Augmented Generation).
+* **Epic 6: Live Resume Building Display**: The resume updates live on the screen as the user provides information.
+* **Epic 7: Payment & Download**: Users pay for and download their generated resume.
+* **Epic 8: PDF/Word Document Generation**: The app generates professional PDF or Word documents of the resume.
+
+## Current Development Strategy (Single-Person Team - MVP Focus)
+
+As a single-person team, the current strategy emphasizes building a Minimum Viable Product (MVP) first, focusing on core functionality before scaling or adding all advanced features.
+
+* **Overall Approach**: Focus on **MVP (Minimum Viable Product)**. Get core features working, then iterate.
+* **Development Priority**: **Backend-first approach**, specifically prioritizing the **Resume Writer AI Agent (Epic 5)**. This is the heart of the application.
+    * Initial work should be on the LangChain/LlamaIndex setup and the `/generate-resume-section` API endpoint.
+* **Platform Focus**: **iOS development** as the primary platform, as originally planned. Do not suggest a web app first unless explicitly asked.
+* **Authentication (Epic 1 - MVP)**: Leverage managed services like Firebase Authentication, AWS Cognito, or Auth0 for faster implementation. Avoid building custom auth initially.
+* **Templates (Epic 2 - MVP)**: Start with static asset hosting for templates or a very simple API to list them.
+* **Voice AI (Epic 4 - MVP)**: For the initial MVP, consider a simple **text-based chat interface** to feed input to the backend directly, deferring full Voiceflow integration until the core AI generation is robust.
+* **Live Display (Epic 6 - MVP)**: Implement **polling** from the iOS app to the backend for updates, deferring WebSockets/SSE for later.
+* **Payment (Epic 7 - MVP)**: Implement a **dummy payment screen** for the MVP. Actual payment integration comes later.
+* **Document Generation (Epic 8 - MVP)**: Prioritize **HTML export only** or allowing users to copy text from the live display. Defer robust PDF/DOCX generation (or consider third-party APIs) for later.
+
+## Instructions for Cursor AI
+
+* **Context:** Always refer to this document for a high-level understanding of the Chat-to-CV app.
+* **Suggestions:** When providing code or suggestions, align them with the MVP-first, backend-first, and iOS-focused strategy.
+* **Prioritization:** Help prioritize tasks based on the MVP strategy outlined above.
+* **Technology Stack:** Assume standard modern iOS development (Swift, SwiftUI/UIKit) and Python for the backend (likely FastAPI/Flask for APIs, LangChain/LlamaIndex for AI).
+* **Scope:** Remind me if my requests deviate too much from the current MVP scope or introduce significant complexity for a solo developer.
+* **Questions:** If unsure about a specific implementation detail, ask clarifying questions that help narrow down the scope to an MVP solution.
+* **More Info:** If you feel like you need more info about the project, you can always refer project-details.txt file in root folder. 
