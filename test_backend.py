@@ -8,6 +8,8 @@ import asyncio
 import json
 from app.services.ai_agent import ResumeWriterAgent
 from app.services.template_service import TemplateService
+from app.services.resume_renderer import ResumeRenderer
+from app.models.resume import JSONResume
 
 async def test_ai_agent():
     """Test the AI agent with fallback functionality"""
@@ -109,6 +111,59 @@ async def main():
     
     # Test AI agent
     await test_ai_agent()
+    
+    print("\n🎉 All tests completed!")
+
+def test_json_resume():
+    """Test JSON Resume functionality"""
+    print("\n📄 Testing JSON Resume...")
+    
+    try:
+        # Load sample JSON Resume data
+        with open("sample_resume_data.json", "r") as f:
+            resume_data = json.load(f)
+        
+        # Create JSONResume object
+        json_resume = JSONResume(**resume_data)
+        
+        print(f"✅ JSON Resume Test:")
+        print(f"   Name: {json_resume.basics.name}")
+        print(f"   Label: {json_resume.basics.label}")
+        print(f"   Work Experience: {len(json_resume.work or [])} positions")
+        print(f"   Education: {len(json_resume.education or [])} institutions")
+        print(f"   Skills: {len(json_resume.skills or [])} skill categories")
+        
+        # Test resume renderer
+        renderer = ResumeRenderer()
+        html_content = renderer.render_html(json_resume, "professional")
+        
+        if html_content:
+            print(f"   ✅ HTML rendering successful (length: {len(html_content)} chars)")
+        else:
+            print(f"   ❌ HTML rendering failed")
+        
+        # Test available themes
+        themes = renderer.get_available_themes()
+        print(f"   Available themes: {list(themes.keys())}")
+        
+    except Exception as e:
+        print(f"❌ JSON Resume Test Failed: {e}")
+
+async def main():
+    """Run all tests"""
+    print("🚀 Starting Chat-to-CV Backend Tests\n")
+    
+    # Test models first
+    test_resume_models()
+    
+    # Test template service
+    test_template_service()
+    
+    # Test AI agent
+    await test_ai_agent()
+    
+    # Test JSON Resume
+    test_json_resume()
     
     print("\n🎉 All tests completed!")
 

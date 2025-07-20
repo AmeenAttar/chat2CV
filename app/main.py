@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 from app.services.ai_agent import ResumeWriterAgent
 from app.services.template_service import TemplateService
+from app.services.resume_renderer import ResumeRenderer
 from app.models.resume import ResumeSection, ResumeData, ResumeCompletenessSummary
 
 # Load environment variables
@@ -31,6 +32,7 @@ app.add_middleware(
 # Initialize services (lazy initialization)
 ai_agent = None
 template_service = TemplateService()
+resume_renderer = ResumeRenderer()
 
 def get_ai_agent():
     global ai_agent
@@ -129,6 +131,34 @@ async def get_resume(user_id: str):
         agent = get_ai_agent()
         resume_data = await agent.get_resume_data(user_id)
         return resume_data
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Resume not found: {str(e)}")
+
+@app.get("/resume/{user_id}/json")
+async def get_resume_json(user_id: str):
+    """Get resume data in JSON Resume format"""
+    try:
+        agent = get_ai_agent()
+        resume_data = await agent.get_resume_data(user_id)
+        return resume_data.json_resume
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Resume not found: {str(e)}")
+
+@app.get("/resume/{user_id}/html")
+async def get_resume_html(user_id: str, theme: str = "professional"):
+    """Get resume rendered as HTML using JSON Resume theme"""
+    try:
+        agent = get_ai_agent()
+        resume_data = await agent.get_resume_data(user_id)
+        
+        # Render the resume using the specified theme
+        html_content = resume_renderer.render_html(resume_data.json_resume, theme)
+        
+        if html_content:
+            return {"html": html_content, "theme": theme}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to render resume")
+            
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Resume not found: {str(e)}")
 

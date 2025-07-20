@@ -11,37 +11,47 @@ class TemplateService:
         self.templates = self._initialize_templates()
     
     def _initialize_templates(self) -> List[TemplateInfo]:
-        """Initialize available resume templates"""
+        """Initialize available resume templates using JSON Resume themes"""
         return [
             TemplateInfo(
                 id="professional",
                 name="Professional",
                 description="Clean, traditional resume template suitable for corporate environments",
-                preview_url="/static/templates/professional_preview.png"
+                preview_url="/static/templates/professional_preview.png",
+                theme_package="jsonresume-theme-standard",
+                category="professional"
             ),
             TemplateInfo(
                 id="modern",
                 name="Modern",
                 description="Contemporary design with clean lines and modern typography",
-                preview_url="/static/templates/modern_preview.png"
+                preview_url="/static/templates/modern_preview.png",
+                theme_package="jsonresume-theme-even",
+                category="modern"
             ),
             TemplateInfo(
                 id="creative",
                 name="Creative",
                 description="Bold, creative template for design and creative industries",
-                preview_url="/static/templates/creative_preview.png"
+                preview_url="/static/templates/creative_preview.png",
+                theme_package="jsonresume-theme-kendall",
+                category="creative"
             ),
             TemplateInfo(
                 id="minimalist",
                 name="Minimalist",
                 description="Simple, clean template focusing on content over design",
-                preview_url="/static/templates/minimalist_preview.png"
+                preview_url="/static/templates/minimalist_preview.png",
+                theme_package="jsonresume-theme-tan-responsive",
+                category="minimalist"
             ),
             TemplateInfo(
                 id="executive",
                 name="Executive",
                 description="Sophisticated template for senior-level positions",
-                preview_url="/static/templates/executive_preview.png"
+                preview_url="/static/templates/executive_preview.png",
+                theme_package="jsonresume-theme-randytarampi",
+                category="executive"
             )
         ]
     
