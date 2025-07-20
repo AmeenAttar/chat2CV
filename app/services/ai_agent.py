@@ -31,20 +31,35 @@ class ResumeWriterAgent:
     """
     
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model="gpt-4",
-            temperature=0.7,
-            api_key=os.getenv("OPENAI_API_KEY")
-        )
-        
-        # Initialize LangChain agent (simplified for MVP)
-        self.agent = self._create_agent()
+        # Lazy initialization for LLM and agent
+        self.llm = None
+        self.agent = None
         
         # In-memory storage for resume data (replace with database in production)
         self.resume_data: Dict[str, ResumeData] = {}
         
         # Initialize knowledge base (simplified for MVP)
         self._initialize_knowledge_base()
+    
+    def _get_llm(self):
+        """Get LLM instance (lazy initialization)"""
+        if self.llm is None:
+            try:
+                self.llm = ChatOpenAI(
+                    model="gpt-4",
+                    temperature=0.7,
+                    api_key=os.getenv("OPENAI_API_KEY")
+                )
+            except Exception as e:
+                print(f"Warning: Could not initialize LLM: {e}")
+                return None
+        return self.llm
+    
+    def _get_agent(self):
+        """Get agent instance (lazy initialization)"""
+        if self.agent is None:
+            self.agent = self._create_agent()
+        return self.agent
     
     def _initialize_vector_store(self):
         """Initialize ChromaDB vector store (disabled for MVP)"""
@@ -110,9 +125,15 @@ Always maintain the user's original meaning while improving the presentation and
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
         
+        # Get LLM (or use fallback if not available)
+        llm = self._get_llm()
+        if llm is None:
+            # Return a simple agent that uses fallback
+            return None
+        
         # Create agent
         agent = create_openai_functions_agent(
-            llm=self.llm,
+            llm=llm,
             tools=[get_template_guidelines, get_action_verbs, get_resume_best_practices],
             prompt=prompt
         )
@@ -220,13 +241,19 @@ Always maintain the user's original meaning while improving the presentation and
         """
         
         try:
-            # Run the agent to generate rephrased content
-            result = await asyncio.to_thread(
-                self.agent.invoke,
-                {"input": agent_input}
-            )
-            
-            rephrased_content = result.get("output", raw_input)
+            # Get agent (or use fallback if not available)
+            agent = self._get_agent()
+            if agent is None:
+                # Use fallback rephrasing
+                rephrased_content = self._fallback_rephrase(raw_input, section_name)
+            else:
+                # Run the agent to generate rephrased content
+                result = await asyncio.to_thread(
+                    agent.invoke,
+                    {"input": agent_input}
+                )
+                
+                rephrased_content = result.get("output", raw_input)
             
             # Update resume data
             if section_name not in resume_data.sections:
