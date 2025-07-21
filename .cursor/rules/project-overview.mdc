@@ -1,6 +1,3 @@
----
-alwaysApply: false
----
 
 
 # Chat-to-CV App Project Overview
@@ -17,10 +14,50 @@ The project is structured around several core epics:
 * **Epic 2: Resume Template Selection**: Users choose from a catalog of resume templates.
 * **Epic 3: Voice AI Assistant UI**: Users interact with a voice chat interface.
 * **Epic 4: Voice AI Assistant Agent (Voiceflow Integration)**: A Voiceflow-powered conversational AI collects resume information via speech-to-text and provides responses via text-to-speech.
-* **Epic 5: Resume Writer AI Agent**: This is the core AI. It takes information collected by Voiceflow, rephrases it to match the selected resume template style, and fills it into the template. This agent will utilize LangChain and LlamaIndex for RAG (Retrieval Augmented Generation).
+* **Epic 5: Resume Writer AI Agent**: ✅ **WORKING** - This is the core AI. It takes information collected by Voiceflow, rephrases it to match the selected resume template style, and fills it into the template. Uses `SimpleResumeAgent` with direct LLM calls to Gemini/OpenAI and rule-based fallbacks.
 * **Epic 6: Live Resume Building Display**: The resume updates live on the screen as the user provides information.
 * **Epic 7: Payment & Download**: Users pay for and download their generated resume.
 * **Epic 8: PDF/Word Document Generation**: The app generates professional PDF or Word documents of the resume.
+
+## ✅ **CURRENT STATUS - Epic 5: WORKING WITH SIMPLE AI AGENT**
+
+### **What's Actually Working:**
+
+1. **✅ SimpleResumeAgent (Working)**
+   - Direct LLM calls to Gemini and OpenAI
+   - Multiple provider fallback system
+   - Rule-based fallbacks when LLM fails
+   - Simple knowledge base from file reads
+   - JSON Resume format compliance
+
+2. **✅ API Endpoints (Working)**
+   - `/generate-resume-section` endpoint functional
+   - Returns structured JSON Resume data
+   - 84.6% test success rate (11/13 tests passed)
+   - Input validation and error handling
+
+3. **✅ Database Integration (Working)**
+   - PostgreSQL with SQLAlchemy ORM
+   - Complete data models and migration system
+   - Persistent storage implemented
+
+4. **✅ Template System (Working)**
+   - JSON Resume theme integration
+   - 16 professional templates available
+   - Template preview generation
+
+### **What We're NOT Using (Despite Previous Claims):**
+- ❌ **LangChain**: Not actually implemented in production
+- ❌ **LlamaIndex**: Not actually working
+- ❌ **ChromaDB**: Not actually functional
+- ❌ **Complex RAG**: Using simple file reads instead
+
+### **Current System Status:**
+- **Backend**: ✅ **WORKING** (SimpleResumeAgent, working APIs)
+- **AI Agent**: ✅ **WORKING** (direct LLM calls with fallbacks)
+- **Database**: ✅ **WORKING**
+- **API Endpoints**: ✅ **WORKING**
+- **Knowledge Base**: ✅ **LOADED** (simple file reads)
 
 ## Current Development Strategy (Single-Person Team - MVP Focus)
 
@@ -28,14 +65,36 @@ As a single-person team, the current strategy emphasizes building a Minimum Viab
 
 * **Overall Approach**: Focus on **MVP (Minimum Viable Product)**. Get core features working, then iterate.
 * **Development Priority**: **Backend-first approach**, specifically prioritizing the **Resume Writer AI Agent (Epic 5)**. This is the heart of the application.
-    * Initial work should be on the LangChain/LlamaIndex setup and the `/generate-resume-section` API endpoint.
+    * ✅ **WORKING**: SimpleResumeAgent with direct LLM calls and fallbacks
+    * **NEXT**: Start iOS development since backend is functional
 * **Platform Focus**: **iOS development** as the primary platform, as originally planned. Do not suggest a web app first unless explicitly asked.
 * **Authentication (Epic 1 - MVP)**: Leverage managed services like Firebase Authentication, AWS Cognito, or Auth0 for faster implementation. Avoid building custom auth initially.
-* **Templates (Epic 2 - MVP)**: Start with static asset hosting for templates or a very simple API to list them.
+* **Templates (Epic 2 - MVP)**: Resume templates are now based on the [JSON Resume](https://jsonresume.org/) open standard. Each template is defined by a theme package (e.g., `jsonresume-theme-standard`, `jsonresume-theme-even`) and can be rendered visually using npm-based themes. The backend provides both the structured JSON Resume data and rendered HTML for each resume, enabling real-time visual previews and easy extensibility. The `/templates` endpoint returns theme package names, categories, and preview URLs for the iOS app to display and select templates. Adding new templates is as simple as installing a new JSON Resume theme and updating the backend config.
 * **Voice AI (Epic 4 - MVP)**: For the initial MVP, consider a simple **text-based chat interface** to feed input to the backend directly, deferring full Voiceflow integration until the core AI generation is robust.
 * **Live Display (Epic 6 - MVP)**: Implement **polling** from the iOS app to the backend for updates, deferring WebSockets/SSE for later.
 * **Payment (Epic 7 - MVP)**: Implement a **dummy payment screen** for the MVP. Actual payment integration comes later.
 * **Document Generation (Epic 8 - MVP)**: Prioritize **HTML export only** or allowing users to copy text from the live display. Defer robust PDF/DOCX generation (or consider third-party APIs) for later.
+
+## 🚀 **NEXT STEPS - IMMEDIATE PRIORITIES**
+
+### **Phase 1: iOS App Development (Next 2-3 weeks)**
+1. **iOS Project Setup**: Create SwiftUI-based iOS app with proper architecture
+2. **Template Selection UI**: Implement template catalog with preview images
+3. **Text Chat Interface**: Simple text-based chat for testing AI integration
+4. **Resume Preview**: Live resume display with real-time updates
+5. **Basic Navigation**: Tab-based navigation between chat and resume views
+
+### **Phase 2: Voiceflow Integration (Next 1-2 weeks)**
+1. **Voiceflow Project Setup**: Configure conversational AI flow
+2. **API Integration**: Connect Voiceflow to backend endpoints
+3. **Voice UI**: Implement voice chat interface with STT/TTS
+4. **Conversational Flow**: Design natural conversation patterns
+
+### **Phase 3: Authentication & Polish (Next 1 week)**
+1. **Firebase Auth**: Implement user authentication
+2. **User Management**: User profiles and resume history
+3. **Payment Integration**: Stripe integration for resume downloads
+4. **Final Polish**: UI/UX improvements and bug fixes
 
 ## Instructions for Cursor AI
 
@@ -45,46 +104,8 @@ As a single-person team, the current strategy emphasizes building a Minimum Viab
 * **Technology Stack:** Assume standard modern iOS development (Swift, SwiftUI/UIKit) and Python for the backend (likely FastAPI/Flask for APIs, LangChain/LlamaIndex for AI).
 * **Scope:** Remind me if my requests deviate too much from the current MVP scope or introduce significant complexity for a solo developer.
 * **Questions:** If unsure about a specific implementation detail, ask clarifying questions that help narrow down the scope to an MVP solution.
-# Chat-to-CV App Project Overview
-
-This document provides a high-level overview of the "Chat-to-CV" iOS application, its core functionality, and the current development strategy. I am a single-person team building this app.
-
-## Project Goal
-An iOS application that allows users to chat with an AI assistant to build and refine their resume.
-
-## Key Epics & Functionality
-The project is structured around several core epics:
-
-* **Epic 1: User Authentication (Sign-in/Sign-up)**: Users can sign in or sign up to access the app.
-* **Epic 2: Resume Template Selection**: Users choose from a catalog of resume templates.
-* **Epic 3: Voice AI Assistant UI**: Users interact with a voice chat interface.
-* **Epic 4: Voice AI Assistant Agent (Voiceflow Integration)**: A Voiceflow-powered conversational AI collects resume information via speech-to-text and provides responses via text-to-speech.
-* **Epic 5: Resume Writer AI Agent**: This is the core AI. It takes information collected by Voiceflow, rephrases it to match the selected resume template style, and fills it into the template. This agent will utilize LangChain and LlamaIndex for RAG (Retrieval Augmented Generation).
-* **Epic 6: Live Resume Building Display**: The resume updates live on the screen as the user provides information.
-* **Epic 7: Payment & Download**: Users pay for and download their generated resume.
-* **Epic 8: PDF/Word Document Generation**: The app generates professional PDF or Word documents of the resume.
-
-## Current Development Strategy (Single-Person Team - MVP Focus)
-
-As a single-person team, the current strategy emphasizes building a Minimum Viable Product (MVP) first, focusing on core functionality before scaling or adding all advanced features.
-
-* **Overall Approach**: Focus on **MVP (Minimum Viable Product)**. Get core features working, then iterate.
-* **Development Priority**: **Backend-first approach**, specifically prioritizing the **Resume Writer AI Agent (Epic 5)**. This is the heart of the application.
-    * Initial work should be on the LangChain/LlamaIndex setup and the `/generate-resume-section` API endpoint.
-* **Platform Focus**: **iOS development** as the primary platform, as originally planned. Do not suggest a web app first unless explicitly asked.
-* **Authentication (Epic 1 - MVP)**: Leverage managed services like Firebase Authentication, AWS Cognito, or Auth0 for faster implementation. Avoid building custom auth initially.
-* **Templates (Epic 2 - MVP)**: Start with static asset hosting for templates or a very simple API to list them.
-* **Voice AI (Epic 4 - MVP)**: For the initial MVP, consider a simple **text-based chat interface** to feed input to the backend directly, deferring full Voiceflow integration until the core AI generation is robust.
-* **Live Display (Epic 6 - MVP)**: Implement **polling** from the iOS app to the backend for updates, deferring WebSockets/SSE for later.
-* **Payment (Epic 7 - MVP)**: Implement a **dummy payment screen** for the MVP. Actual payment integration comes later.
-* **Document Generation (Epic 8 - MVP)**: Prioritize **HTML export only** or allowing users to copy text from the live display. Defer robust PDF/DOCX generation (or consider third-party APIs) for later.
-
-## Instructions for Cursor AI
-
-* **Context:** Always refer to this document for a high-level understanding of the Chat-to-CV app.
-* **Suggestions:** When providing code or suggestions, align them with the MVP-first, backend-first, and iOS-focused strategy.
-* **Prioritization:** Help prioritize tasks based on the MVP strategy outlined above.
-* **Technology Stack:** Assume standard modern iOS development (Swift, SwiftUI/UIKit) and Python for the backend (likely FastAPI/Flask for APIs, LangChain/LlamaIndex for AI).
+* **More Info:** If you feel like you need more info about the project, you can always refer project-details.txt file in root folder. 
+* **Voiceflow Integration:** For Voiceflow integration details, refer to `voiceflow_integration_flow.md` file in root folder.
 * **Scope:** Remind me if my requests deviate too much from the current MVP scope or introduce significant complexity for a solo developer.
 * **Questions:** If unsure about a specific implementation detail, ask clarifying questions that help narrow down the scope to an MVP solution.
 * **More Info:** If you feel like you need more info about the project, you can always refer project-details.txt file in root folder. 

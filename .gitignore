@@ -156,3 +156,19 @@ logs/
 temp/
 uploads/
 downloads/ 
+node_modules
+
+# Archive folder (old/unused files)
+archive/
+
+# iOS specific
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+ios/*.xcuserstate
+ios/Pods/
+ios/Podfile.lock
+ios/Carthage/
+ios/Cartfile.resolved

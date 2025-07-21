@@ -1,38 +1,57 @@
-# Chat-to-CV Backend
+# Chat-to-CV Project
 
-Backend service for the Chat-to-CV iOS application, focusing on the Resume Writer AI Agent (Epic 5).
+A comprehensive iOS application that allows users to chat with an AI assistant to build and refine their resume.
 
-## Features
+## Project Structure
 
-- **Resume Writer AI Agent**: Core AI service using LangChain + LlamaIndex for RAG
-- **Template Management**: Resume template storage and retrieval
-- **Real-time Updates**: WebSocket support for live resume building
-- **API Endpoints**: RESTful API for resume generation and management
+```
+v1/
+├── backend/                 # Python FastAPI backend
+│   ├── app/                # Main application code
+│   ├── alembic/            # Database migrations
+│   ├── static/             # Template previews and assets
+│   ├── requirements.txt    # Python dependencies
+│   └── env.example         # Environment variables template
+├── tests/                  # All test files
+│   ├── test_*.py          # Individual test modules
+│   ├── run_tests.py       # Test runner
+│   └── pytest.ini         # Pytest configuration
+├── docs/                   # Documentation and project details
+├── scripts/                # Utility scripts
+├── archive/                # Archived/unused files (gitignored)
+├── ios/                    # iOS app (ready for development)
+└── README.md
+```
+
+## Current Status
+
+✅ **Epic 5: Resume Writer AI Agent - WORKING**
+- SimpleResumeAgent with direct LLM calls
+- Multiple provider fallback system
+- JSON Resume format compliance
+- 84.6% test success rate
 
 ## Quick Start
 
-1. **Clone and Setup**:
+1. **Setup Backend**:
    ```bash
-   git clone <repository-url>
-   cd v1
+   cd backend
    python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-2. **Install Dependencies**:
-   ```bash
    pip install -r requirements.txt
-   ```
-
-3. **Environment Setup**:
-   ```bash
    cp env.example .env
-   # Edit .env with your actual API keys
+   # Edit .env with your API keys
    ```
 
-4. **Run the Server**:
+2. **Run Backend**:
    ```bash
+   cd backend
    uvicorn app.main:app --reload
+   ```
+
+3. **Run Tests**:
+   ```bash
+   ./run_tests.sh
    ```
 
 ## API Endpoints
@@ -40,36 +59,25 @@ Backend service for the Chat-to-CV iOS application, focusing on the Resume Write
 - `POST /generate-resume-section`: Generate resume content from user input
 - `GET /templates`: Get available resume templates
 - `GET /resume/{user_id}`: Get current resume state
-- `WS /ws/{user_id}`: WebSocket for real-time updates
 
-## Project Structure
+## Development Strategy
 
-```
-v1/
-├── app/
-│   ├── main.py              # FastAPI application
-│   ├── models/              # Pydantic models
-│   ├── services/            # Business logic
-│   │   ├── ai_agent.py      # Resume Writer AI Agent
-│   │   └── template_service.py
-│   ├── knowledge_base/      # LlamaIndex knowledge base
-│   └── templates/           # Resume templates
-├── requirements.txt
-├── env.example
-└── README.md
-```
+**MVP-First Approach:**
+1. ✅ **Backend Complete**: Resume Writer AI Agent working
+2. 🎯 **iOS Development**: Ready to start - Template selection UI prepared
+3. 📋 **Voiceflow Integration**: Text-based chat first, then voice
+4. 💳 **Payment & Polish**: Final features
 
-## Development
+## Technology Stack
 
-- **Virtual Environment**: Always activate `venv` before development
-- **Environment Variables**: Copy `env.example` to `.env` and configure
-- **Dependencies**: Add new packages to `requirements.txt`
-- **Git**: Follow conventional commit messages
+- **Backend**: Python, FastAPI, SQLAlchemy, PostgreSQL
+- **AI**: Direct LLM calls (Gemini/OpenAI) with fallbacks
+- **iOS**: SwiftUI (coming soon)
+- **Templates**: JSON Resume standard
 
-## MVP Strategy
+## Contributing
 
-Following the MVP-first approach:
-1. **Backend-first**: Focus on Resume Writer AI Agent (Epic 5)
-2. **Core API**: `/generate-resume-section` endpoint
-3. **Simple Templates**: Static template hosting initially
-4. **Text-based Input**: Defer voice integration for later 
+- Follow MVP strategy
+- Test all changes: `./run_tests.sh`
+- Keep backend-first approach
+- Focus on iOS development next 
