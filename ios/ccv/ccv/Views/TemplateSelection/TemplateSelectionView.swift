@@ -49,10 +49,10 @@ struct TemplateSelectionView: View {
             .navigationBarTitleDisplayMode(.large)
         }
         .onChange(of: viewModel.shouldNavigateToChat) { _, shouldNavigate in
-            if shouldNavigate, let template = viewModel.selectedTemplate {
+            if shouldNavigate, let template = viewModel.selectedTemplate, let sessionId = viewModel.sessionId {
                 NotificationCenter.default.post(
                     name: .templateSelected,
-                    object: template
+                    object: ["template": template, "sessionId": sessionId]
                 )
                 viewModel.shouldNavigateToChat = false
             }

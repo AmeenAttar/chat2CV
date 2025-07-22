@@ -25,7 +25,6 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 # Import our services
-from app.services.llama_index_rag import LlamaIndexRAGService
 from app.services.database_service import DatabaseService
 from app.services.template_aware_parser import TemplateAwareQualityAssurance
 from app.services.output_parser import OutputParser
@@ -33,8 +32,6 @@ from app.services.output_parser import OutputParser
 from app.models.resume import (
     ResumeData, 
     ResumeSection, 
-    ResumeCompletenessSummary, 
-    SectionStatus,
     GenerateResumeSectionResult,
     WorkExperience,
     Education,
@@ -54,19 +51,6 @@ class EnhancedResumeAgent:
     def __init__(self, db_service: Optional[DatabaseService] = None, use_rag: bool = True):
         self.db_service = db_service
         self.use_rag = use_rag
-        
-        # Initialize RAG service only if requested
-        if use_rag:
-            try:
-                self.rag_service = LlamaIndexRAGService()
-                print("✅ LlamaIndex RAG service initialized")
-            except Exception as e:
-                print(f"⚠️  RAG service initialization failed: {e}")
-                self.rag_service = None
-                self.use_rag = False
-        else:
-            self.rag_service = None
-            print("⚠️  RAG service disabled for testing")
         
         # Initialize other services
         try:
@@ -124,21 +108,10 @@ class EnhancedResumeAgent:
         """Create context-aware, template-specific prompts with RAG integration"""
         
         # Get RAG context if available
-        if self.rag_service and self.use_rag:
-            try:
-                template_guidelines = self.rag_service.get_template_guidelines(template_id)
-                best_practices = self.rag_service.get_best_practices(section_name)
-                action_verbs = self.rag_service.get_action_verbs("general")
-            except Exception as e:
-                logger.warning(f"RAG service failed: {e}")
-                template_guidelines = "Use professional tone and clear structure"
-                best_practices = "Focus on achievements and use strong action verbs"
-                action_verbs = "Managed, Led, Developed, Implemented, Created, Designed, Analyzed, Optimized"
-        else:
-            # Fallback content when RAG is not available
-            template_guidelines = "Use professional tone and clear structure"
-            best_practices = "Focus on achievements and use strong action verbs"
-            action_verbs = "Managed, Led, Developed, Implemented, Created, Designed, Analyzed, Optimized"
+        # Remove all references to rag_service, LlamaIndexRAGService, and RAG logic
+        template_guidelines = "Use professional tone and clear structure"
+        best_practices = "Focus on achievements and use strong action verbs"
+        action_verbs = "Managed, Led, Developed, Implemented, Created, Designed, Analyzed, Optimized"
         
         # Get current resume context
         current_context = {}
@@ -594,6 +567,5 @@ Example:
             'status': 'healthy' if self.llm_providers else 'degraded',
             'providers_available': len(self.llm_providers),
             'provider_stats': self.provider_stats,
-            'rag_service': self.rag_service.health_check() if self.rag_service else 'N/A',
             'qa_service': 'available' if self.qa_service else 'N/A'
         } 

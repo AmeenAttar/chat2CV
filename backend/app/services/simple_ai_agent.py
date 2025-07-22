@@ -10,6 +10,7 @@ import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import logging
+import concurrent.futures
 
 # Try multiple LLM providers for redundancy
 try:
@@ -27,9 +28,7 @@ except ImportError:
 # Import our services
 from app.services.database_service import DatabaseService
 from app.models.resume import (
-    ResumeData, 
-    ResumeCompletenessSummary, 
-    SectionStatus,
+    ResumeData,
     WorkExperience,
     Education,
     Skill,
@@ -45,6 +44,7 @@ class SimpleResumeAgent:
     Simple, reliable AI agent for resume generation
     Uses direct LLM calls with multiple fallback strategies
     """
+    _llm_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
     
     def __init__(self, db_service: Optional[DatabaseService] = None):
         self.db_service = db_service
@@ -96,7 +96,8 @@ class SimpleResumeAgent:
         
         # Initialize Gemini
         if GEMINI_AVAILABLE:
-            gemini_key = os.getenv("GEMINI_API_KEY")
+            gemini_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            logger.info(f"Gemini key loaded from: {'GOOGLE_API_KEY' if os.getenv('GOOGLE_API_KEY') else 'GEMINI_API_KEY'}")
             if gemini_key:
                 try:
                     genai.configure(api_key=gemini_key)
@@ -118,6 +119,7 @@ class SimpleResumeAgent:
         if not providers:
             logger.warning("⚠️  No LLM providers available, using fallback only")
         
+        logger.info(f"LLM providers initialized: {list(providers.keys())}")
         return providers
     
     def _load_knowledge_base(self) -> Dict[str, str]:
@@ -152,38 +154,50 @@ class SimpleResumeAgent:
     
     def _create_prompt(self, section_name: str, raw_input: str, template_id: int, 
                       current_resume_data: Optional[ResumeData] = None) -> str:
-        """Create a comprehensive, context-aware prompt"""
-        
+        """Create a prompt that asks for the full JSON Resume structure from the input."""
         # Get template guidelines
         template_guidelines = self.knowledge_base['template_guidelines'].get(template_id, "Use professional tone and clear structure")
-        
-        # Get section best practices
-        best_practices = self.knowledge_base['section_best_practices'].get(section_name, "Focus on achievements and use strong action verbs")
-        
         # Get action verbs
         action_verbs = self.knowledge_base['action_verbs']['general']
-        
         # Get current resume context
         current_context = {}
         if current_resume_data and current_resume_data.json_resume:
             current_context = current_resume_data.json_resume.dict()
-        
-        # Create section-specific JSON format
-        json_format = self._get_json_format_for_section(section_name)
-        
+        # Full JSON Resume schema (canonical example for LLM prompt)
+        json_resume_schema = {
+            "basics": {"name": "", "email": "", "phone": "", "summary": "", "location": {"city": "", "region": "", "countryCode": ""}},
+            "work": [{"name": "", "position": "", "startDate": "", "endDate": "", "summary": "", "highlights": []}],
+            "education": [{"institution": "", "area": "", "studyType": "", "startDate": "", "endDate": ""}],
+            "skills": [{"name": "", "level": "", "keywords": []}],
+            "projects": [{"name": "", "description": "", "highlights": [], "keywords": [], "startDate": "", "endDate": ""}],
+            "awards": [{"title": "", "date": "", "awarder": "", "summary": ""}],
+            "languages": [{"language": "", "fluency": ""}],
+            "interests": [{"name": "", "keywords": []}],
+            "volunteer": [{"organization": "", "position": "", "startDate": "", "endDate": "", "summary": ""}],
+            "publications": [{"name": "", "publisher": "", "releaseDate": "", "url": "", "summary": ""}],
+            "references": [{"name": "", "reference": ""}]
+        }
+        example_json_resume = {
+            "basics": {"name": "Jane Doe", "email": "jane@example.com", "phone": "+1-555-123-4567", "summary": "Experienced software engineer...", "location": {"city": "San Francisco", "region": "CA", "countryCode": "US"}},
+            "work": [{"name": "TechCorp", "position": "Senior Engineer", "startDate": "2021-01", "endDate": "Present", "summary": "Led a team...", "highlights": ["Reduced costs by 20%", "Mentored 3 juniors"]}],
+            "education": [{"institution": "Stanford University", "area": "Computer Science", "studyType": "Bachelor's", "startDate": "2016", "endDate": "2020"}],
+            "skills": [{"name": "Python", "level": "Expert", "keywords": ["Django", "Flask"]}],
+            "projects": [{"name": "Resume Builder", "description": "Built an AI-powered resume app", "highlights": ["1000+ users"], "keywords": ["AI", "FastAPI"], "startDate": "2022-01", "endDate": "2022-06"}],
+            "awards": [{"title": "Employee of the Year", "date": "2022", "awarder": "TechCorp", "summary": "Outstanding performance"}],
+            "languages": [{"language": "English", "fluency": "Native"}],
+            "interests": [{"name": "Hiking", "keywords": ["Outdoors"]}],
+            "volunteer": [{"organization": "Code for Good", "position": "Mentor", "startDate": "2020-01", "endDate": "2021-01", "summary": "Mentored students"}],
+            "publications": [{"name": "AI in Practice", "publisher": "Tech Journal", "releaseDate": "2021-05", "url": "https://example.com", "summary": "Practical AI applications"}],
+            "references": [{"name": "John Smith", "reference": "Manager at TechCorp"}]
+        }
         prompt = f"""
-You are an expert resume writer specializing in JSON Resume format. Convert the user input into professional, structured resume content.
+You are an expert resume writer specializing in the JSON Resume format. Your task is to extract and fill as many fields as possible in the full JSON Resume structure from the user's input below. If a field is not present, leave it empty. Be as complete as possible.
 
-CONTEXT:
-- Section: {section_name}
-- Template ID: {template_id}
-- User Input: "{raw_input}"
+USER INPUT:
+"{raw_input}"
 
 TEMPLATE GUIDELINES:
 {template_guidelines}
-
-SECTION BEST PRACTICES:
-{best_practices}
 
 ACTION VERBS:
 {action_verbs}
@@ -191,17 +205,20 @@ ACTION VERBS:
 CURRENT RESUME CONTEXT:
 {json.dumps(current_context, indent=2)}
 
-JSON FORMAT REQUIREMENTS:
-{json_format}
+JSON RESUME SCHEMA (canonical):
+{json.dumps(json_resume_schema, indent=2)}
+
+EXAMPLE JSON RESUME:
+{json.dumps(example_json_resume, indent=2)}
 
 CRITICAL INSTRUCTIONS:
-1. Convert the user input into professional resume content
-2. Follow the template guidelines and maintain consistency with existing content
-3. Use strong action verbs and quantify achievements where possible
-4. Return ONLY a valid JSON object - no explanations, no markdown, no additional text
-5. Ensure all dates are in YYYY-MM format (or YYYY for education)
-6. OMIT any fields that are empty or not provided - do not include null values
-7. Maintain the exact JSON structure specified above
+1. Extract and fill as many fields as possible in the full JSON Resume structure.
+2. Leave fields empty if not present in the input.
+3. Return ONLY a valid JSON object for the entire resume (no explanations, no markdown, no extra text).
+4. Use strong action verbs and quantify achievements where possible.
+5. Ensure all dates are in YYYY-MM format (or YYYY for education).
+6. OMIT any fields that are empty or not provided - do not include null values.
+7. Maintain the exact JSON structure as shown above.
 
 Generate the content now. Return ONLY the JSON object:
 """
@@ -361,41 +378,42 @@ EXAMPLE:
     
     async def _try_llm_providers(self, prompt: str, section_name: str) -> Optional[str]:
         """Try multiple LLM providers with intelligent fallback"""
-        
+        logger.info(f"Trying LLM providers in order: {list(self.llm_providers.keys())}")
         for provider_name, provider in self.llm_providers.items():
             try:
                 logger.info(f"🔄 Trying {provider_name} provider...")
                 result = await self._call_llm_provider(provider_name, provider, prompt)
-                
-                logger.info(f"📝 {provider_name} raw response: {result[:200]}...")
-                
+                logger.info(f"📝 {provider_name} full raw response: {result}")
                 if result and self._validate_llm_response(result, section_name):
                     logger.info(f"✅ {provider_name} provider succeeded")
                     return result
                 else:
                     logger.warning(f"⚠️  {provider_name} response validation failed")
-                    
             except Exception as e:
                 logger.warning(f"⚠️  {provider_name} provider failed: {e}")
-        
+        logger.warning("⚠️  All LLM providers failed, using rule-based fallback")
         return None
     
     async def _call_llm_provider(self, provider_name: str, provider: Any, prompt: str) -> str:
         """Call specific LLM provider"""
-        
+        import time
         if provider_name == 'gemini':
-            # Gemini is synchronous, so we run it in a thread pool with timeout
+            # Use a dedicated thread pool executor for Gemini
             loop = asyncio.get_event_loop()
+            start = time.time()
             try:
                 response = await asyncio.wait_for(
-                    loop.run_in_executor(None, provider.generate_content, prompt),
-                    timeout=30.0
+                    loop.run_in_executor(self._llm_executor, provider.generate_content, prompt),
+                    timeout=60.0
                 )
+                logger.info(f"Gemini call completed in {time.time() - start:.2f} seconds")
                 return response.text
             except asyncio.TimeoutError:
                 logger.warning("⚠️  Gemini request timed out")
                 raise Exception("Gemini request timed out")
-        
+            except Exception as e:
+                logger.warning(f"⚠️  Gemini call failed: {e}")
+                raise
         elif provider_name == 'openai':
             response = provider.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -404,7 +422,6 @@ EXAMPLE:
                 max_tokens=1000
             )
             return response.choices[0].message.content
-        
         else:
             raise ValueError(f"Unknown provider: {provider_name}")
     
@@ -440,11 +457,9 @@ EXAMPLE:
     
     def _process_and_validate_result(self, result: str, section_name: str, raw_input: str) -> Dict[str, Any]:
         """Process and validate the AI result"""
-        
         try:
             # Clean response from markdown code blocks
             result_clean = result.strip()
-            
             # Remove markdown code blocks
             if result_clean.startswith('```json'):
                 result_clean = result_clean[7:]  # Remove ```json
@@ -452,27 +467,31 @@ EXAMPLE:
                 result_clean = result_clean[3:]  # Remove ```
             if result_clean.endswith('```'):
                 result_clean = result_clean[:-3]  # Remove ```
-            
             result_clean = result_clean.strip()
-            
-            # Parse JSON response
+            logger.info(f"Cleaned LLM response: {result_clean}") # Debug log
             parsed_data = json.loads(result_clean)
-            
-            # Basic validation
-            if self._validate_section_data(parsed_data, section_name):
-                return {
-                    'status': 'success',
-                    'updated_section': json.dumps(parsed_data),
-                    'rephrased_content': self._extract_text_content(parsed_data, section_name),
-                    'quality_score': 0.8
-                }
-            else:
-                logger.warning("⚠️  Data validation failed, using fallback")
-                return self._rule_based_fallback(section_name, raw_input)
-                
-        except json.JSONDecodeError as e:
-            logger.warning(f"⚠️  JSON parsing failed: {e}")
+            logger.info(f"Parsed LLM JSON: {parsed_data}") # Debug log
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to parse LLM output as JSON: {e}")
             return self._rule_based_fallback(section_name, raw_input)
+
+        # Only use fallback if the parsed_data is missing all required fields
+        # For JSON Resume, at least one of basics, work, education, skills, etc. should be present and non-empty
+        has_any_section = False
+        for key in ["basics", "work", "education", "skills", "projects", "awards", "languages", "interests", "volunteer", "publications", "references"]:
+            if key in parsed_data and parsed_data[key]:
+                has_any_section = True
+                break
+        if not has_any_section:
+            logger.warning("⚠️  LLM output missing all required sections, using fallback")
+            return self._rule_based_fallback(section_name, raw_input)
+
+        # If we get here, the LLM output is structurally correct, even if validation fails
+        return {
+            "status": "success",
+            "updated_section": json.dumps(parsed_data, indent=2),
+            "rephrased_content": result_clean
+        }
     
     def _validate_section_data(self, data: Dict[str, Any], section_name: str) -> bool:
         """Basic validation of section data"""

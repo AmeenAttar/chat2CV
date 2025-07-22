@@ -240,3 +240,6 @@ A **complete resume generation platform** with:
 ---
 
 **Next Action**: Open Xcode and test the iOS app! 🚀 
+
+## TODO / Known Issues
+- [ ] Template preview images for iOS app: Images are not displaying in the app due to network or ATS issues. Core functionality works; fix image previews after main features are stable. 

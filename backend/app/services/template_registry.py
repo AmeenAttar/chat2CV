@@ -219,6 +219,46 @@ class TemplateRegistry:
                 version="3.4.1",
                 author="jsonresume",
                 github_url="https://github.com/jsonresume/jsonresume-theme-stackoverflow-ru"
+            ),
+            100: JSONResumeTheme(
+                id=100,
+                name="Macchiato",
+                npm_package="jsonresume-theme-macchiato",
+                description="Macchiato theme for JSON Resume",
+                category="modern",
+                version="1.0.0",
+                author="jsonresume",
+                github_url="https://github.com/jsonresume/jsonresume-theme-macchiato"
+            ),
+            101: JSONResumeTheme(
+                id=101,
+                name="CV",
+                npm_package="jsonresume-theme-cv",
+                description="CV theme for JSON Resume",
+                category="modern",
+                version="1.0.0",
+                author="jsonresume",
+                github_url="https://github.com/eddiejaoude/jsonresume-theme-cv"
+            ),
+            102: JSONResumeTheme(
+                id=102,
+                name="Professional",
+                npm_package="jsonresume-theme-professional",
+                description="Professional theme for JSON Resume",
+                category="professional",
+                version="1.0.0",
+                author="jsonresume",
+                github_url="https://github.com/jsonresume/jsonresume-theme-professional"
+            ),
+            103: JSONResumeTheme(
+                id=103,
+                name="Jacrys",
+                npm_package="jsonresume-theme-jacrys",
+                description="Jacrys theme for JSON Resume",
+                category="modern",
+                version="1.0.0",
+                author="jsonresume",
+                github_url="https://github.com/jsonresume/jsonresume-theme-jacrys"
             )
         }
     

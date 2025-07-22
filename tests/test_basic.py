@@ -14,27 +14,29 @@ def test_basic_import():
     except ImportError as e:
         pytest.fail(f"Import failed: {e}")
 
-def test_ai_agent_creation():
-    """Test that we can create an AI agent"""
-    try:
-        from app.services.ai_agent import ResumeWriterAgent
-        agent = ResumeWriterAgent()
-        assert agent is not None
-        assert hasattr(agent, 'llm')
-        assert hasattr(agent, 'rag_service')
-    except Exception as e:
-        pytest.fail(f"AI agent creation failed: {e}")
+# Commented out: test_ai_agent_creation (legacy agent test, not used in production)
+# def test_ai_agent_creation():
+#     """Test that we can create an AI agent"""
+#     try:
+#         from app.services.ai_agent import ResumeWriterAgent
+#         agent = ResumeWriterAgent()
+#         assert agent is not None
+#         assert hasattr(agent, 'llm')
+#         assert hasattr(agent, 'rag_service')
+#     except Exception as e:
+#         pytest.fail(f"AI agent creation failed: {e}")
 
-def test_rag_service_creation():
-    """Test that we can create a RAG service"""
-    try:
-        from app.services.simple_rag import SimpleRAGService
-        rag = SimpleRAGService()
-        assert rag is not None
-        assert hasattr(rag, 'knowledge_base')
-        assert hasattr(rag, 'chunks')
-    except Exception as e:
-        pytest.fail(f"RAG service creation failed: {e}")
+# Commented out: test_rag_service_creation (RAG/knowledge base test, not used in production)
+# def test_rag_service_creation():
+#     """Test that we can create a RAG service"""
+#     try:
+#         from app.services.simple_rag import SimpleRAGService
+#         rag = SimpleRAGService()
+#         assert rag is not None
+#         assert hasattr(rag, 'knowledge_base')
+#         assert hasattr(rag, 'chunks')
+#     except Exception as e:
+#         pytest.fail(f"RAG service creation failed: {e}")
 
 def test_database_connection():
     """Test database connection"""

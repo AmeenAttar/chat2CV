@@ -72,12 +72,11 @@ async def test_ai_agent_integration():
                     user_id=test_case["user_id"]
                 )
                 
-                if result.status == "success":
-                    print(f"✅ Success! Rephrased content: '{result.rephrased_content[:100]}...'")
-                    print(f"   Updated section: {result.updated_section}")
-                    print(f"   Completeness: {result.resume_completeness_summary.total_sections_completed}/{result.resume_completeness_summary.total_sections} sections")
+                if result['status'] == "success":
+                    print(f"✅ Success! json_resume keys: {list(result['json_resume'].keys())}")
+                    print(f"   Checklist sample: {list(result['quality_checklist'].items())[:5]}")
                 else:
-                    print(f"❌ Failed: {result.status}")
+                    print(f"❌ Failed: {result['status']}")
                     
             except Exception as e:
                 print(f"❌ Error: {e}")

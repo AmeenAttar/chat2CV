@@ -17,28 +17,29 @@ def test_imports():
     except ImportError as e:
         pytest.fail(f"Import failed: {e}")
 
-def test_rag_service_fast():
-    """Test RAG service without AI agent"""
-    try:
-        from app.services.simple_rag import SimpleRAGService
-        rag = SimpleRAGService()
+# Commented out: test_rag_service_fast (RAG/knowledge base test, not used in production)
+# def test_rag_service_fast():
+#     """Test RAG service without AI agent"""
+#     try:
+#         from app.services.simple_rag import SimpleRAGService
+#         rag = SimpleRAGService()
         
-        # Test basic functionality
-        assert rag is not None
-        assert hasattr(rag, 'knowledge_base')
-        assert hasattr(rag, 'keyword_index')
-        assert len(rag.knowledge_base) > 0
+#         # Test basic functionality
+#         assert rag is not None
+#         assert hasattr(rag, 'knowledge_base')
+#         assert hasattr(rag, 'keyword_index')
+#         assert len(rag.knowledge_base) > 0
         
-        # Test a simple query
-        result = rag.get_template_guidelines("professional")
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
+#         # Test a simple query
+#         result = rag.get_template_guidelines("professional")
+#         assert result is not None
+#         assert isinstance(result, str)
+#         assert len(result) > 0
         
-        print("✅ RAG service working")
-        assert True
-    except Exception as e:
-        pytest.fail(f"RAG service test failed: {e}")
+#         print("✅ RAG service working")
+#         assert True
+#     except Exception as e:
+#         pytest.fail(f"RAG service test failed: {e}")
 
 def test_database_models():
     """Test database models without connection"""

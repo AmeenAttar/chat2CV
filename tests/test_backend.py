@@ -28,10 +28,9 @@ async def test_ai_agent():
         )
         
         print(f"✅ AI Agent Test Result:")
-        print(f"   Status: {result.status}")
-        print(f"   Section: {result.updated_section}")
-        print(f"   Rephrased Content: {result.rephrased_content}")
-        print(f"   Completeness Summary: {result.resume_completeness_summary.model_dump()}")
+        print(f"   Status: {result['status']}")
+        print(f"   json_resume keys: {list(result['json_resume'].keys())}")
+        print(f"   Checklist sample: {list(result['quality_checklist'].items())[:5]}")
         
     except Exception as e:
         print(f"❌ AI Agent Test Failed: {e}")
@@ -73,7 +72,6 @@ def test_resume_models():
         from app.models.resume import (
             ResumeData, 
             ResumeSection, 
-            ResumeCompletenessSummary,
             SectionStatus
         )
         

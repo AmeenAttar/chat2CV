@@ -205,6 +205,18 @@ struct CreateResumeRequest: Codable {
     let user_email: String
 }
 
+// MARK: - Session Models
+struct CreateSessionRequest: Codable {
+    let template_id: Int
+}
+
+struct CreateSessionResponse: Codable {
+    let session_id: String
+    let resume_id: Int
+    let template_id: Int
+    let status: String
+}
+
 // MARK: - Extensions for convenience
 extension ResumeCompletenessSummary {
     var completionPercentage: Double {

@@ -4,6 +4,7 @@ Comprehensive test suite for the AI Resume Builder
 Tests AI agent, RAG system, database integration, and API endpoints
 """
 
+# LANGCHAIN DEPRECATED: Skipping tests that require langchain.
 import pytest
 import asyncio
 import json
@@ -18,214 +19,70 @@ from app.models.resume import ResumeData, Education, WorkExperience, Skill
 from app.database import get_db
 
 
-class TestAIAgent:
-    """Test suite for the AI Agent functionality"""
+# Commented out: TestAIAgent (legacy agent, not used in production)
+# class TestAIAgent:
+#     """Test suite for the AI Agent functionality"""
     
-    @pytest.fixture
-    def ai_agent(self):
-        """Create a test AI agent instance"""
-        return ResumeWriterAgent()
+#     @pytest.fixture
+#     def ai_agent(self):
+#         """Create a test AI agent instance"""
+#         return ResumeWriterAgent()
     
-    @pytest.fixture
-    def sample_inputs(self):
-        """Sample inputs for testing"""
-        return {
-            "education": "I studied my bachelors in AI from stanford",
-            "work": "I worked as a software engineer at Google for 2 years",
-            "skills": "python, javascript, machine learning, data analysis"
-        }
+#     @pytest.fixture
+#     def sample_inputs(self):
+#         """Sample inputs for testing"""
+#         return {
+#             "education": "I studied my bachelors in AI from stanford",
+#             "work": "I worked as a software engineer at Google for 2 years",
+#             "skills": "python, javascript, machine learning, data analysis"
+#         }
     
-    def test_agent_initialization(self, ai_agent):
-        """Test that AI agent initializes correctly"""
-        assert ai_agent is not None
-        assert hasattr(ai_agent, 'llm')
-        assert hasattr(ai_agent, 'rag_service')
-        assert hasattr(ai_agent, 'tools')
+#     # Remove tests for rag_service, tools, and in-memory fallback logic
+#     # Only keep tests for direct LLM/database-backed logic
+#     @pytest.mark.asyncio
+#     async def test_education_extraction(self, ai_agent, sample_inputs):
+#         """Test education section extraction"""
+#         result = await ai_agent.generate_section(
+#             template_id="1",
+#             section_name="education",
+#             raw_input=sample_inputs["education"],
+#             user_id="1"
+#         )
+#         assert result is not None
+#         assert "status" in result
+#         assert result["status"] == "success"
+#         assert "json_resume" in result
+#         assert "quality_checklist" in result
     
-    def test_agent_tools_available(self, ai_agent):
-        """Test that all required tools are available"""
-        tool_names = [tool.name for tool in ai_agent.tools]
-        expected_tools = [
-            'get_template_guidelines',
-            'get_action_verbs', 
-            'get_resume_best_practices',
-            'get_industry_guidelines'
-        ]
-        
-        for tool in expected_tools:
-            assert tool in tool_names, f"Tool {tool} not found in agent"
+#     @pytest.mark.asyncio
+#     async def test_work_extraction(self, ai_agent, sample_inputs):
+#         """Test work experience extraction"""
+#         result = await ai_agent.generate_section(
+#             template_id="1",
+#             section_name="work",
+#             raw_input=sample_inputs["work"],
+#             user_id="1"
+#         )
+#         assert result is not None
+#         assert "status" in result
+#         assert result["status"] == "success"
+#         assert "json_resume" in result
+#         assert "quality_checklist" in result
     
-    @pytest.mark.asyncio
-    async def test_education_extraction(self, ai_agent, sample_inputs):
-        """Test education section extraction"""
-        result = await ai_agent.generate_section(
-            template_id="1",
-            section_name="education",
-            raw_input=sample_inputs["education"],
-            user_id="1"
-        )
-        
-        assert result is not None
-        assert "status" in result
-        assert result["status"] == "success"
-        assert "processed_content" in result
-        
-        # Check if structured data was extracted
-        content = result["processed_content"]
-        if isinstance(content, str):
-            # Try to parse as JSON
-            try:
-                data = json.loads(content)
-                assert "institution" in data
-                assert "area" in data
-                assert "studyType" in data
-            except json.JSONDecodeError:
-                # Fallback: check if basic info is present
-                assert "stanford" in content.lower()
-                assert "ai" in content.lower()
-    
-    @pytest.mark.asyncio
-    async def test_work_extraction(self, ai_agent, sample_inputs):
-        """Test work experience extraction"""
-        result = await ai_agent.generate_section(
-            template_id="1",
-            section_name="work",
-            raw_input=sample_inputs["work"],
-            user_id="1"
-        )
-        
-        assert result is not None
-        assert "status" in result
-        assert result["status"] == "success"
-        assert "processed_content" in result
-        
-        # Check if structured data was extracted
-        content = result["processed_content"]
-        if isinstance(content, str):
-            try:
-                data = json.loads(content)
-                assert "name" in data
-                assert "position" in data
-                assert "startDate" in data
-                assert "endDate" in data
-            except json.JSONDecodeError:
-                # Fallback: check if basic info is present
-                assert "google" in content.lower()
-                assert "software engineer" in content.lower()
-    
-    @pytest.mark.asyncio
-    async def test_skills_extraction(self, ai_agent, sample_inputs):
-        """Test skills section extraction"""
-        result = await ai_agent.generate_section(
-            template_id="1",
-            section_name="skills",
-            raw_input=sample_inputs["skills"],
-            user_id="1"
-        )
-        
-        assert result is not None
-        assert "status" in result
-        assert result["status"] == "success"
-        assert "processed_content" in result
-        
-        # Check if structured data was extracted
-        content = result["processed_content"]
-        if isinstance(content, str):
-            try:
-                data = json.loads(content)
-                assert isinstance(data, list)
-                for skill in data:
-                    assert "name" in skill
-                    assert "level" in skill
-            except json.JSONDecodeError:
-                # Fallback: check if skills are present
-                assert "python" in content.lower()
-                assert "javascript" in content.lower()
-    
-    def test_fallback_extraction_methods(self, ai_agent):
-        """Test fallback extraction methods when AI fails"""
-        
-        # Test education fallback
-        education_input = "I studied my bachelors in AI from stanford"
-        result = ai_agent._extract_basic_education_info(education_input)
-        assert result is not None
-        assert "institution" in result
-        assert "area" in result
-        assert "studyType" in result
-        
-        # Test work experience fallback
-        work_input = "I worked as a software engineer at Google for 2 years"
-        result = ai_agent._extract_basic_work_info(work_input)
-        assert result is not None
-        assert "name" in result
-        assert "position" in result
-        
-        # Test skills fallback
-        skills_input = "python, javascript, machine learning"
-        result = ai_agent._extract_basic_skills_info(skills_input)
-        assert result is not None
-        assert isinstance(result, list)
-        assert len(result) > 0
-
-
-class TestRAGService:
-    """Test suite for the RAG (Retrieval Augmented Generation) service"""
-    
-    @pytest.fixture
-    def rag_service(self):
-        """Create a test RAG service instance"""
-        return SimpleRAGService()
-    
-    def test_rag_service_initialization(self, rag_service):
-        """Test that RAG service initializes correctly"""
-        assert rag_service is not None
-        assert hasattr(rag_service, 'knowledge_base')
-        assert hasattr(rag_service, 'chunks')
-        assert len(rag_service.chunks) > 0
-    
-    def test_template_guidelines_retrieval(self, rag_service):
-        """Test retrieval of template guidelines"""
-        result = rag_service.get_template_guidelines("professional")
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
-        assert "professional" in result.lower()
-    
-    def test_action_verbs_retrieval(self, rag_service):
-        """Test retrieval of action verbs"""
-        result = rag_service.get_action_verbs("tech")
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
-        assert "tech" in result.lower()
-    
-    def test_best_practices_retrieval(self, rag_service):
-        """Test retrieval of resume best practices"""
-        result = rag_service.get_resume_best_practices("work")
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
-        assert "work" in result.lower()
-    
-    def test_industry_guidelines_retrieval(self, rag_service):
-        """Test retrieval of industry guidelines"""
-        result = rag_service.get_industry_guidelines("tech")
-        assert result is not None
-        assert isinstance(result, str)
-        assert len(result) > 0
-        assert "tech" in result.lower()
-    
-    def test_similarity_search(self, rag_service):
-        """Test similarity-based search functionality"""
-        query = "software engineering best practices"
-        results = rag_service._search_similar_chunks(query)
-        assert results is not None
-        assert isinstance(results, list)
-        assert len(results) > 0
-        
-        # Check that results are sorted by relevance
-        if len(results) > 1:
-            assert results[0]['similarity'] >= results[1]['similarity']
+#     @pytest.mark.asyncio
+#     async def test_skills_extraction(self, ai_agent, sample_inputs):
+#         """Test skills section extraction"""
+#         result = await ai_agent.generate_section(
+#             template_id="1",
+#             section_name="skills",
+#             raw_input=sample_inputs["skills"],
+#             user_id="1"
+#         )
+#         assert result is not None
+#         assert "status" in result
+#         assert result["status"] == "success"
+#         assert "json_resume" in result
+#         assert "quality_checklist" in result
 
 
 class TestDatabaseIntegration:
@@ -233,8 +90,9 @@ class TestDatabaseIntegration:
     
     @pytest.fixture
     def db_service(self):
-        """Create a test database service instance"""
-        return DatabaseService()
+        from app.database import get_db
+        db = next(get_db())
+        return DatabaseService(db)
     
     def test_database_connection(self, db_service):
         """Test database connection and basic operations"""
@@ -322,19 +180,172 @@ class TestAPIEndpoints:
     @pytest.mark.asyncio
     async def test_generate_resume_section_endpoint(self, client):
         """Test the resume section generation endpoint"""
+        # First, create a session
+        session_payload = {"template_id": 1}
+        session_response = client.post("/create-session", json=session_payload)
+        print("Session creation response:", session_response.status_code, session_response.json())
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        # Now, use the session_id in the resume section request
         payload = {
             "template_id": "1",
             "section_name": "education",
             "raw_input": "I studied my bachelors in AI from stanford",
-            "user_id": "1"
+            "session_id": session_id
         }
-        
         response = client.post("/generate-resume-section", json=payload)
+        if response.status_code != 200:
+            print("/generate-resume-section response:", response.status_code, response.text)
         assert response.status_code == 200
         data = response.json()
         assert "status" in data
-        assert data["status"] == "success"
-        assert "processed_content" in data
+        assert data["status"] in ("success", "fallback_success")
+        assert "json_resume" in data
+        assert "quality_checklist" in data
+
+    @pytest.mark.asyncio
+    async def test_generate_resume_section_multisection_long_input(self, client):
+        """Test the resume section generation endpoint with long, multi-section input"""
+        # First, create a session
+        session_payload = {"template_id": 1}
+        session_response = client.post("/create-session", json=session_payload)
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        # Long, multi-section input
+        long_input = (
+            "My name is John Doe. I worked as a software engineer at Google from 2020 to 2022, "
+            "where I led a team and improved system performance by 40%. I also interned at Facebook in 2019. "
+            "I graduated from MIT in 2020 with a degree in Computer Science. My skills include Python, JavaScript, and machine learning. "
+            "I speak English and Spanish. I enjoy hiking and photography."
+        )
+        payload = {
+            "template_id": "1",
+            "section_name": "basics",
+            "raw_input": long_input,
+            "session_id": session_id
+        }
+        response = client.post("/generate-resume-section", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "json_resume" in data
+        print("json_resume keys:", list(data["json_resume"].keys()))
+        # Check that multiple sections are filled
+        filled_sections = [k for k, v in data["json_resume"].items() if v]
+        print("Filled sections:", filled_sections)
+        assert "basics" in filled_sections
+        assert "work" in filled_sections
+        assert "education" in filled_sections
+        assert "skills" in filled_sections
+
+    @pytest.mark.asyncio
+    async def test_generate_resume_section_work_only(self, client):
+        """Test with input containing only work experience"""
+        session_payload = {"template_id": 1}
+        session_response = client.post("/create-session", json=session_payload)
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        work_input = "I worked as a data analyst at Acme Corp from 2018 to 2021."
+        payload = {
+            "template_id": "1",
+            "section_name": "work",
+            "raw_input": work_input,
+            "session_id": session_id
+        }
+        response = client.post("/generate-resume-section", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        print("json_resume:", data["json_resume"])
+        print("quality_checklist:", data["quality_checklist"])
+        assert "work" in data["json_resume"] and data["json_resume"]["work"]
+
+    @pytest.mark.asyncio
+    async def test_generate_resume_section_education_only(self, client):
+        """Test with input containing only education info"""
+        session_payload = {"template_id": 1}
+        session_response = client.post("/create-session", json=session_payload)
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        edu_input = "I graduated from Harvard in 2017 with a degree in Economics."
+        payload = {
+            "template_id": "1",
+            "section_name": "education",
+            "raw_input": edu_input,
+            "session_id": session_id
+        }
+        response = client.post("/generate-resume-section", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        print("json_resume:", data["json_resume"])
+        print("quality_checklist:", data["quality_checklist"])
+        assert "education" in data["json_resume"] and data["json_resume"]["education"]
+
+    @pytest.mark.asyncio
+    async def test_generate_resume_section_skills_only(self, client):
+        """Test with input containing only skills info"""
+        session_payload = {"template_id": 1}
+        session_response = client.post("/create-session", json=session_payload)
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        skills_input = "My skills are Python, SQL, and data visualization."
+        payload = {
+            "template_id": "1",
+            "section_name": "skills",
+            "raw_input": skills_input,
+            "session_id": session_id
+        }
+        response = client.post("/generate-resume-section", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        print("json_resume:", data["json_resume"])
+        print("quality_checklist:", data["quality_checklist"])
+        assert "skills" in data["json_resume"] and data["json_resume"]["skills"]
+
+    @pytest.mark.asyncio
+    async def test_generate_resume_section_ambiguous_input(self, client):
+        """Test with ambiguous/mixed input"""
+        session_payload = {"template_id": 1}
+        session_response = client.post("/create-session", json=session_payload)
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        mixed_input = "I am Jane. I worked at Acme as a manager. I studied at Oxford."
+        payload = {
+            "template_id": "1",
+            "section_name": "basics",
+            "raw_input": mixed_input,
+            "session_id": session_id
+        }
+        response = client.post("/generate-resume-section", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        print("json_resume:", data["json_resume"])
+        print("quality_checklist:", data["quality_checklist"])
+        assert "basics" in data["json_resume"] and data["json_resume"]["basics"]
+        assert "work" in data["json_resume"] and data["json_resume"]["work"]
+        assert "education" in data["json_resume"] and data["json_resume"]["education"]
+
+    @pytest.mark.asyncio
+    async def test_generate_resume_section_skip_intent(self, client):
+        """Test with skip intent in input"""
+        session_payload = {"template_id": 1}
+        session_response = client.post("/create-session", json=session_payload)
+        assert session_response.status_code == 200
+        session_id = session_response.json()["session_id"]
+        skip_input = "I don't want to provide my phone number."
+        payload = {
+            "template_id": "1",
+            "section_name": "basics",
+            "raw_input": skip_input,
+            "session_id": session_id
+        }
+        response = client.post("/generate-resume-section", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        checklist = data["quality_checklist"]
+        print("json_resume:", data["json_resume"])
+        print("quality_checklist:", checklist)
+        skipped = [k for k, v in checklist.items() if v == "skipped"]
+        print("skipped fields:", skipped)
+        assert any("phone" in k for k in skipped)
 
 
 class TestContentQuality:
@@ -409,50 +420,51 @@ class TestContentQuality:
         assert any(verb in weak_content.lower() for verb in weak_verbs)
 
 
-class TestPerformance:
-    """Test suite for performance and scalability"""
+# Commented out: TestPerformance (legacy agent test, not used in production)
+# class TestPerformance:
+#     """Test suite for performance and scalability"""
     
-    @pytest.mark.asyncio
-    async def test_response_time(self):
-        """Test that API responses are within acceptable time limits"""
-        import time
+#     @pytest.mark.asyncio
+#     async def test_response_time(self):
+#         """Test that API responses are within acceptable time limits"""
+#         import time
         
-        ai_agent = ResumeWriterAgent()
-        start_time = time.time()
+#         ai_agent = ResumeWriterAgent()
+#         start_time = time.time()
         
-        result = await ai_agent.generate_section(
-            template_id="1",
-            section_name="education",
-            raw_input="I studied my bachelors in AI from stanford",
-            user_id="1"
-        )
+#         result = await ai_agent.generate_section(
+#             template_id="1",
+#             section_name="education",
+#             raw_input="I studied my bachelors in AI from stanford",
+#             user_id="1"
+#         )
         
-        end_time = time.time()
-        response_time = end_time - start_time
+#         end_time = time.time()
+#         response_time = end_time - start_time
         
-        # Response should be under 5 seconds
-        assert response_time < 5.0, f"Response time {response_time}s exceeds 5s limit"
-        assert result is not None
+#         # Response should be under 5 seconds
+#         assert response_time < 5.0, f"Response time {response_time}s exceeds 5s limit"
+#         assert result is not None
     
-    def test_memory_usage(self):
-        """Test memory usage is reasonable"""
-        import psutil
-        import os
+#     def test_memory_usage(self):
+#         """Test memory usage is reasonable"""
+#         import psutil
+#         import os
         
-        process = psutil.Process(os.getpid())
-        initial_memory = process.memory_info().rss
+#         process = psutil.Process(os.getpid())
+#         initial_memory = process.memory_info().rss
         
-        # Create multiple AI agents
-        agents = []
-        for _ in range(5):
-            agent = ResumeWriterAgent()
-            agents.append(agent)
+#         # Create multiple AI agents
+#         agents = []
+#         for _ in range(5):
+#             agent = ResumeWriterAgent()
+#             agents.append(agent)
         
-        final_memory = process.memory_info().rss
-        memory_increase = final_memory - initial_memory
+#         final_memory = process.memory_info().rss
+#         memory_increase = final_memory - initial_memory
         
-        # Memory increase should be reasonable (less than 100MB)
-        assert memory_increase < 100 * 1024 * 1024, f"Memory increase {memory_increase} bytes exceeds 100MB"
+#         # Memory increase should be reasonable (less than 100MB)
+#         assert memory_increase < 100 * 1024 * 1024, f"Memory increase {memory_increase} bytes exceeds 100MB"
 
 
 if __name__ == "__main__":

@@ -132,35 +132,12 @@ class ResumeSection(BaseModel):
     status: SectionStatus = SectionStatus.NOT_STARTED
     last_updated: Optional[str] = None
 
-class ResumeCompletenessSummary(BaseModel):
-    """Smart completeness summary for Voiceflow conversational guidance"""
-    # Section completion status - using JSON Resume standard names
-    basics: SectionStatus = SectionStatus.NOT_STARTED
-    work: SectionStatus = SectionStatus.NOT_STARTED
-    education: SectionStatus = SectionStatus.NOT_STARTED
-    skills: SectionStatus = SectionStatus.NOT_STARTED
-    projects: SectionStatus = SectionStatus.NOT_STARTED
-    awards: SectionStatus = SectionStatus.NOT_STARTED
-    languages: SectionStatus = SectionStatus.NOT_STARTED
-    interests: SectionStatus = SectionStatus.NOT_STARTED
-    volunteer: SectionStatus = SectionStatus.NOT_STARTED
-    publications: SectionStatus = SectionStatus.NOT_STARTED
-    references: SectionStatus = SectionStatus.NOT_STARTED
-    
-    # Smart conversational guidance for Voiceflow
-    conversation_context: Dict[str, Any] = Field(default_factory=dict)
-    suggested_topics: List[str] = Field(default_factory=list)
-    missing_critical_info: List[str] = Field(default_factory=list)
-    conversation_flow_hints: List[str] = Field(default_factory=list)
-    user_progress_insights: Dict[str, Any] = Field(default_factory=dict)
-
 class ResumeData(BaseModel):
     """Complete resume data structure"""
     user_id: str
     template_id: int
     json_resume: JSONResume = Field(default_factory=JSONResume)
     sections: Dict[str, ResumeSection] = Field(default_factory=dict)
-    completeness_summary: ResumeCompletenessSummary = Field(default_factory=ResumeCompletenessSummary)
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -191,5 +168,10 @@ class GenerateResumeSectionResult(BaseModel):
     status: str
     updated_section: str
     rephrased_content: str
-    resume_completeness_summary: ResumeCompletenessSummary
+    resume_completeness_summary: Dict[str, Any] # Changed from ResumeCompletenessSummary
     resume_data: Optional[ResumeData] = None 
+
+class GenerateResumeResponse(BaseModel):
+    status: str
+    json_resume: dict
+    quality_checklist: dict 

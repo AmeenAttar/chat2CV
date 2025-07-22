@@ -12,29 +12,19 @@ class TemplateService:
         self.registry = TemplateRegistry()
         # Map theme names to available preview images
         self.preview_mapping = {
-            "Classy": "professional_preview.png",
-            "Elegant": "professional_preview.png", 
-            "Kendall": "modern_preview.png",
-            "Cora": "professional_preview.png",
-            "Even": "minimalist_preview.png",
-            "Lowmess": "creative_preview.png",
-            "Waterfall": "minimalist_preview.png",
-            "Straightforward": "professional_preview.png",
-            "Sceptile": "creative_preview.png",
-            "Bufferbloat": "modern_preview.png",
-            "Modern": "modern_preview.png",
-            "MS Resume": "professional_preview.png",
-            "Projects": "creative_preview.png",
-            "Umennel": "professional_preview.png",
-            "Even Crewshin": "minimalist_preview.png",
-            "Stack Overflow RU": "professional_preview.png"
+            "Macchiato": "macchiato_preview.png",
+            "CV": "cv_preview.png",
+            "Professional": "professional_preview.png",
+            "Jacrys": "jacrys_preview.png"
         }
     
     def get_available_templates(self) -> List[TemplateInfo]:
         """Get list of available resume templates"""
         templates = []
         for theme in self.registry.get_all_themes():
-            preview_file = self.preview_mapping.get(theme.name, "professional_preview.png")
+            if theme.name not in self.preview_mapping:
+                continue
+            preview_file = self.preview_mapping.get(theme.name)
             templates.append(TemplateInfo(
                 id=theme.id,
                 name=theme.name,

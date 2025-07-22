@@ -32,7 +32,6 @@ class Resume(Base):
     title = Column(String(255), nullable=True)  # User-defined resume title
     json_resume_data = Column(JSON, nullable=False)  # Complete JSON Resume structure
     schema_version = Column(String(50), default="v1.0.0")  # Track schema version
-    completeness_summary = Column(JSON, nullable=True)  # Section completion status
     is_complete = Column(Boolean, default=False)
     is_paid = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -123,7 +122,6 @@ class ResumeCreate(BaseModel):
 class ResumeUpdate(BaseModel):
     title: Optional[str] = None
     json_resume_data: Optional[Dict[str, Any]] = None
-    completeness_summary: Optional[Dict[str, Any]] = None
     is_complete: Optional[bool] = None
 
 class ResumeResponse(BaseModel):
@@ -133,7 +131,6 @@ class ResumeResponse(BaseModel):
     title: Optional[str] = None
     json_resume_data: Dict[str, Any]
     schema_version: str = "v1.0.0"
-    completeness_summary: Optional[Dict[str, Any]] = None
     is_complete: bool
     is_paid: bool
     created_at: datetime

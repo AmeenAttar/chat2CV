@@ -5,7 +5,89 @@ Provides conversational intelligence rather than rigid rules
 """
 
 from typing import Dict, List, Any, Optional
-from app.models.resume import ResumeCompletenessSummary, SectionStatus, JSONResume
+from app.models.resume import JSONResume
+
+class QualityChecklistGenerator:
+    """Generates a per-field quality checklist for a JSON Resume dict, supporting skipped fields."""
+    def __init__(self):
+        pass
+
+    def detect_skipped_fields(self, user_input: str) -> set:
+        """Detect which fields the user wants to skip based on input phrases and field keywords."""
+        skip_phrases = [
+            'skip',
+            "don’t want to provide",
+            "don't want to provide",
+            "not comfortable sharing",
+            "prefer not to say",
+            "no comment",
+            "leave blank"
+        ]
+        field_keywords = {
+            'name': ['name', 'full name'],
+            'email': ['email', 'e-mail'],
+            'phone': ['phone', 'phone number'],
+            'summary': ['summary', 'about me', 'bio'],
+            'position': ['position', 'job title', 'role'],
+            'company': ['company', 'employer', 'organization'],
+            'institution': ['institution', 'university', 'college', 'school'],
+            'degree': ['degree', 'studytype', 'qualification'],
+            'area': ['area', 'field', 'major', 'specialization'],
+            'skills': ['skills', 'technologies', 'tools'],
+            'projects': ['projects', 'project'],
+            'awards': ['awards', 'certifications', 'certification'],
+            'languages': ['languages', 'language'],
+            'interests': ['interests', 'hobbies'],
+            'volunteer': ['volunteer', 'volunteering'],
+            'publications': ['publications', 'publication'],
+            'references': ['references', 'referee']
+        }
+        lowered = user_input.lower()
+        skipped = set()
+        for phrase in skip_phrases:
+            if phrase in lowered:
+                for field, keywords in field_keywords.items():
+                    for keyword in keywords:
+                        if keyword in lowered:
+                            skipped.add(field)
+                            # Add full path for basics fields
+                            if field in ['name', 'email', 'phone', 'summary', 'location', 'profiles']:
+                                skipped.add(f"basics.{field}")
+        return skipped
+
+    def generate(self, json_resume: dict, skipped_fields: set = None) -> dict:
+        checklist = {}
+        skipped_fields = skipped_fields or set()
+        def check_field(path, value):
+            if path in skipped_fields:
+                return "skipped"
+            if value is None or (isinstance(value, str) and not value.strip()):
+                return "missing"
+            if isinstance(value, list) and not value:
+                return "missing"
+            # Add more sophisticated checks here (e.g., email format, date plausibility, length)
+            if isinstance(value, str) and len(value.strip()) < 3:
+                return "low_quality"
+            return "ok"
+        def walk(obj, path=""):
+            if isinstance(obj, dict):
+                # Always check for skipped fields, even if missing from dict
+                for k in set(list(obj.keys()) + [f for f in skipped_fields if f.startswith(path + ".") or (not path and f.count(".") == 1)]):
+                    v = obj.get(k, None)
+                    full_path = f"{path}.{k}" if path else k
+                    checklist[full_path] = check_field(full_path, v)
+                    walk(v, full_path)
+            elif isinstance(obj, list):
+                for idx, item in enumerate(obj):
+                    full_path = f"{path}[{idx}]"
+                    checklist[full_path] = check_field(full_path, item)
+                    walk(item, full_path)
+        walk(json_resume)
+        # Also add any skipped fields that were not present in the data
+        for skipped in skipped_fields:
+            if skipped not in checklist:
+                checklist[skipped] = "skipped"
+        return checklist
 
 class CompletenessAnalyzer:
     """Analyzes resume completeness and provides smart guidance for Voiceflow"""
@@ -35,39 +117,39 @@ class CompletenessAnalyzer:
             "projects": ["name", "description"]
         }
     
-    def analyze_completeness(self, resume_data: JSONResume, template_id: int = 1) -> ResumeCompletenessSummary:
+    def analyze_completeness(self, resume_data: JSONResume, template_id: int = 1) -> Dict[str, Any]:
         """Analyze resume and provide smart completeness guidance"""
         
         # Basic section status
-        completeness = ResumeCompletenessSummary()
+        completeness = {}
         
         # Analyze each section
-        completeness.basics = self._analyze_section("basics", resume_data.basics)
-        completeness.work = self._analyze_section("work", resume_data.work)
-        completeness.education = self._analyze_section("education", resume_data.education)
-        completeness.skills = self._analyze_section("skills", resume_data.skills)
-        completeness.projects = self._analyze_section("projects", resume_data.projects)
-        completeness.awards = self._analyze_section("awards", resume_data.awards)
-        completeness.languages = self._analyze_section("languages", resume_data.languages)
-        completeness.interests = self._analyze_section("interests", resume_data.interests)
-        completeness.volunteer = self._analyze_section("volunteer", resume_data.volunteer)
-        completeness.publications = self._analyze_section("publications", resume_data.publications)
-        completeness.references = self._analyze_section("references", resume_data.references)
+        completeness["basics"] = self._analyze_section("basics", resume_data.basics)
+        completeness["work"] = self._analyze_section("work", resume_data.work)
+        completeness["education"] = self._analyze_section("education", resume_data.education)
+        completeness["skills"] = self._analyze_section("skills", resume_data.skills)
+        completeness["projects"] = self._analyze_section("projects", resume_data.projects)
+        completeness["awards"] = self._analyze_section("awards", resume_data.awards)
+        completeness["languages"] = self._analyze_section("languages", resume_data.languages)
+        completeness["interests"] = self._analyze_section("interests", resume_data.interests)
+        completeness["volunteer"] = self._analyze_section("volunteer", resume_data.volunteer)
+        completeness["publications"] = self._analyze_section("publications", resume_data.publications)
+        completeness["references"] = self._analyze_section("references", resume_data.references)
         
         # Generate smart conversational guidance
-        completeness.conversation_context = self._generate_conversation_context(resume_data, template_id)
-        completeness.suggested_topics = self._generate_suggested_topics(resume_data, template_id)
-        completeness.missing_critical_info = self._identify_missing_critical_info(resume_data)
-        completeness.conversation_flow_hints = self._generate_flow_hints(resume_data, template_id)
-        completeness.user_progress_insights = self._generate_progress_insights(resume_data, template_id)
+        completeness["conversation_context"] = self._generate_conversation_context(resume_data, template_id)
+        completeness["suggested_topics"] = self._generate_suggested_topics(resume_data, template_id)
+        completeness["missing_critical_info"] = self._identify_missing_critical_info(resume_data)
+        completeness["conversation_flow_hints"] = self._generate_flow_hints(resume_data, template_id)
+        completeness["user_progress_insights"] = self._generate_progress_insights(resume_data, template_id)
         
         return completeness
     
-    def _analyze_section(self, section_name: str, section_data: Any) -> SectionStatus:
+    def _analyze_section(self, section_name: str, section_data: Any) -> Dict[str, Any]:
         """Analyze completeness of a specific section"""
         
         if not section_data:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No data for this section."}
         
         # Section-specific analysis
         if section_name == "basics":
@@ -93,12 +175,12 @@ class CompletenessAnalyzer:
         elif section_name == "references":
             return self._analyze_references(section_data)
         else:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "Unknown section."}
     
-    def _analyze_basics(self, basics: Any) -> SectionStatus:
+    def _analyze_basics(self, basics: Any) -> Dict[str, Any]:
         """Analyze basics section completeness"""
         if not basics:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No basic information provided."}
         
         # Check required fields
         has_name = basics.name is not None and basics.name.strip() != ""
@@ -106,135 +188,135 @@ class CompletenessAnalyzer:
         has_summary = basics.summary is not None and basics.summary.strip() != ""
         
         if has_name and has_email and has_summary:
-            return SectionStatus.COMPLETE
+            return {"status": "complete", "details": "Basic information is complete."}
         elif has_name or has_email:
-            return SectionStatus.PARTIAL
+            return {"status": "partial", "details": "Basic information is partially complete."}
         else:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "Basic information is incomplete."}
     
-    def _analyze_work(self, work: List[Any]) -> SectionStatus:
+    def _analyze_work(self, work: List[Any]) -> Dict[str, Any]:
         """Analyze work experience section completeness"""
         if not work or len(work) == 0:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No work experience provided."}
         
         # Check if at least one work experience has required fields
         for job in work:
             has_company = job.name is not None and job.name.strip() != ""
             has_position = job.position is not None and job.position.strip() != ""
             if has_company and has_position:
-                return SectionStatus.COMPLETE
+                return {"status": "complete", "details": "Work experience is complete."}
         
-        return SectionStatus.PARTIAL
+        return {"status": "partial", "details": "Work experience is partially complete."}
     
-    def _analyze_education(self, education: List[Any]) -> SectionStatus:
+    def _analyze_education(self, education: List[Any]) -> Dict[str, Any]:
         """Analyze education completeness"""
         if not education:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No education information provided."}
         
         if len(education) >= 1:
-            return SectionStatus.COMPLETE
+            return {"status": "complete", "details": "Education is complete."}
         else:
-            return SectionStatus.INCOMPLETE
+            return {"status": "incomplete", "details": "Education is incomplete."}
     
-    def _analyze_skills(self, skills: List[Any]) -> SectionStatus:
+    def _analyze_skills(self, skills: List[Any]) -> Dict[str, Any]:
         """Analyze skills completeness"""
         if not skills:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No skills provided."}
         
         if len(skills) >= 5:
-            return SectionStatus.COMPLETE
+            return {"status": "complete", "details": "Skills are complete."}
         elif len(skills) >= 2:
-            return SectionStatus.PARTIAL
+            return {"status": "partial", "details": "Skills are partially complete."}
         else:
-            return SectionStatus.INCOMPLETE
+            return {"status": "incomplete", "details": "Skills are incomplete."}
     
-    def _analyze_projects(self, projects: List[Any]) -> SectionStatus:
+    def _analyze_projects(self, projects: List[Any]) -> Dict[str, Any]:
         """Analyze projects completeness"""
         if not projects:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No projects provided."}
         
         if len(projects) >= 2:
-            return SectionStatus.COMPLETE
+            return {"status": "complete", "details": "Projects are complete."}
         elif len(projects) == 1:
-            return SectionStatus.PARTIAL
+            return {"status": "partial", "details": "Projects are partially complete."}
         else:
-            return SectionStatus.INCOMPLETE
+            return {"status": "incomplete", "details": "Projects are incomplete."}
     
-    def _analyze_awards(self, awards: List[Any]) -> SectionStatus:
+    def _analyze_awards(self, awards: List[Any]) -> Dict[str, Any]:
         """Analyze awards section completeness"""
         if not awards or len(awards) == 0:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No awards provided."}
         
         # Check if at least one award has required fields
         for award in awards:
             has_title = award.title is not None and award.title.strip() != ""
             if has_title:
-                return SectionStatus.COMPLETE
+                return {"status": "complete", "details": "Awards are complete."}
         
-        return SectionStatus.PARTIAL
+        return {"status": "partial", "details": "Awards are partially complete."}
     
-    def _analyze_volunteer(self, volunteer: List[Any]) -> SectionStatus:
+    def _analyze_volunteer(self, volunteer: List[Any]) -> Dict[str, Any]:
         """Analyze volunteer section completeness"""
         if not volunteer or len(volunteer) == 0:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No volunteer experience provided."}
         
         # Check if at least one volunteer experience has required fields
         for vol in volunteer:
             has_organization = vol.organization is not None and vol.organization.strip() != ""
             has_position = vol.position is not None and vol.position.strip() != ""
             if has_organization and has_position:
-                return SectionStatus.COMPLETE
+                return {"status": "complete", "details": "Volunteer experience is complete."}
         
-        return SectionStatus.PARTIAL
+        return {"status": "partial", "details": "Volunteer experience is partially complete."}
     
-    def _analyze_publications(self, publications: List[Any]) -> SectionStatus:
+    def _analyze_publications(self, publications: List[Any]) -> Dict[str, Any]:
         """Analyze publications section completeness"""
         if not publications or len(publications) == 0:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No publications provided."}
         
         # Check if at least one publication has required fields
         for pub in publications:
             has_name = pub.name is not None and pub.name.strip() != ""
             if has_name:
-                return SectionStatus.COMPLETE
+                return {"status": "complete", "details": "Publications are complete."}
         
-        return SectionStatus.PARTIAL
+        return {"status": "partial", "details": "Publications are partially complete."}
     
-    def _analyze_references(self, references: List[Any]) -> SectionStatus:
+    def _analyze_references(self, references: List[Any]) -> Dict[str, Any]:
         """Analyze references section completeness"""
         if not references or len(references) == 0:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No references provided."}
         
         # Check if at least one reference has required fields
         for ref in references:
             has_name = ref.name is not None and ref.name.strip() != ""
             has_reference = ref.reference is not None and ref.reference.strip() != ""
             if has_name and has_reference:
-                return SectionStatus.COMPLETE
+                return {"status": "complete", "details": "References are complete."}
         
-        return SectionStatus.PARTIAL
+        return {"status": "partial", "details": "References are partially complete."}
     
-    def _analyze_languages(self, languages: List[Any]) -> SectionStatus:
+    def _analyze_languages(self, languages: List[Any]) -> Dict[str, Any]:
         """Analyze languages completeness"""
         if not languages:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No languages provided."}
         
         if len(languages) >= 1:
-            return SectionStatus.COMPLETE
+            return {"status": "complete", "details": "Languages are complete."}
         else:
-            return SectionStatus.INCOMPLETE
+            return {"status": "incomplete", "details": "Languages are incomplete."}
     
-    def _analyze_interests(self, interests: List[Any]) -> SectionStatus:
+    def _analyze_interests(self, interests: List[Any]) -> Dict[str, Any]:
         """Analyze interests completeness"""
         if not interests:
-            return SectionStatus.NOT_STARTED
+            return {"status": "not_started", "details": "No interests provided."}
         
         if len(interests) >= 2:
-            return SectionStatus.COMPLETE
+            return {"status": "complete", "details": "Interests are complete."}
         elif len(interests) == 1:
-            return SectionStatus.PARTIAL
+            return {"status": "partial", "details": "Interests are partially complete."}
         else:
-            return SectionStatus.INCOMPLETE
+            return {"status": "incomplete", "details": "Interests are incomplete."}
     
     def _generate_conversation_context(self, resume_data: JSONResume, template_id: int) -> Dict[str, Any]:
         """Generate context for Voiceflow conversations"""

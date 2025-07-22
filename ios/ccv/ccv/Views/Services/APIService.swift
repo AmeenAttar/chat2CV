@@ -7,7 +7,7 @@ class APIService: ObservableObject {
     static let shared = APIService()
     
     // MARK: - Configuration
-    private let baseURL = "http://localhost:8000"
+    private let baseURL = "http://192.168.0.187:8001"
     private let session = URLSession.shared
     
     init() {}
@@ -129,6 +129,23 @@ class APIService: ObservableObject {
         
         let request = URLRequest(url: url)
         return try await makeRequest(request)
+    }
+    
+    // MARK: - Session Endpoints
+    func createSession(templateId: Int) async throws -> CreateSessionResponse {
+        guard let url = URL(string: "\(baseURL)/create-session") else {
+            throw APIError(detail: "Invalid URL", status_code: nil)
+        }
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let requestBody = CreateSessionRequest(template_id: templateId)
+        do {
+            urlRequest.httpBody = try JSONEncoder().encode(requestBody)
+        } catch {
+            throw APIError(detail: "Failed to encode request", status_code: nil)
+        }
+        return try await makeRequest(urlRequest)
     }
     
     // MARK: - Health Check

@@ -8,22 +8,49 @@ import json
 import os
 import time
 from dotenv import load_dotenv
+load_dotenv()
 from datetime import datetime, timedelta, timezone
 import uuid
+import re
+import traceback
+import logging
+logging.basicConfig(level=logging.DEBUG, force=True)
 
 from app.services.simple_ai_agent import SimpleResumeAgent
 from app.services.template_service import TemplateService
 from app.services.resume_renderer import ResumeRenderer
 from app.services.database_service import DatabaseService
 from app.services.schema_validator import JSONResumeValidator
-from app.services.completeness_analyzer import CompletenessAnalyzer
-from app.models.resume import ResumeSection, ResumeData, ResumeCompletenessSummary
+from app.services.completeness_analyzer import CompletenessAnalyzer, QualityChecklistGenerator
+from app.services.section_classifier import llm_infer_section_from_input
+from app.models.resume import ResumeSection, ResumeData, GenerateResumeResponse
 from app.database import get_db, init_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.error_handler import error_handler
 
 # Load environment variables
-load_dotenv('../.env')
+# load_dotenv('../.env') # This line is now redundant as load_dotenv() is called at the top
+
+# Recursively promote top-level JSON Resume fields from nested dicts to the top level
+
+def promote_sections_to_top_level(data, top_fields=None):
+    """Recursively promote top-level JSON Resume fields from nested dicts to the top level."""
+    if top_fields is None:
+        top_fields = [
+            "work", "education", "skills", "projects", "awards", "languages", "interests", "volunteer", "publications", "references"
+        ]
+    def _promote(d, root):
+        if not isinstance(d, dict):
+            return
+        for field in top_fields:
+            if field in d and d[field]:
+                if (field not in root) or (not root[field]):
+                    root[field] = d[field]
+        for v in d.values():
+            if isinstance(v, dict):
+                _promote(v, root)
+    _promote(data, data)
+    return data
 
 def clean_null_values(data: Any) -> Any:
     """Remove null values from data to comply with JSON Resume schema"""
@@ -37,6 +64,33 @@ def clean_null_values(data: Any) -> Any:
         return [clean_null_values(item) for item in data if item is not None]
     else:
         return data
+
+def infer_section_from_input(raw_input: str, current_resume_data: Optional[dict] = None) -> str:
+    """Infer the most likely section from user input using simple heuristics. Extend with LLM if needed."""
+    text = raw_input.lower()
+    # Simple keyword-based heuristics
+    if any(word in text for word in ["work", "job", "company", "position", "employer", "manager", "engineer", "developer", "analyst", "designer", "consultant", "intern", "experience", "role"]):
+        return "work"
+    if any(word in text for word in ["study", "university", "college", "school", "degree", "bachelor", "master", "phd", "gpa", "education", "course", "graduated"]):
+        return "education"
+    if any(word in text for word in ["skill", "proficient", "expertise", "languages", "tools", "framework", "technology", "competency"]):
+        return "skills"
+    if any(word in text for word in ["project", "built", "created", "developed", "launched", "side project", "portfolio"]):
+        return "projects"
+    if any(word in text for word in ["award", "honor", "prize", "recognition", "achievement"]):
+        return "awards"
+    if any(word in text for word in ["language", "fluent", "bilingual", "multilingual", "native speaker"]):
+        return "languages"
+    if any(word in text for word in ["interest", "hobby", "passion", "enjoy", "like to"]):
+        return "interests"
+    if any(word in text for word in ["volunteer", "volunteering", "nonprofit", "charity", "community service"]):
+        return "volunteer"
+    if any(word in text for word in ["publication", "published", "paper", "article", "journal"]):
+        return "publications"
+    if any(word in text for word in ["reference", "referee", "recommendation"]):
+        return "references"
+    # Default to basics if nothing else matches
+    return "basics"
 
 app = FastAPI(
     title="Chat-to-CV Backend",
@@ -75,7 +129,7 @@ def check_rate_limit(user_id: str) -> bool:
 # Input validation models
 class GenerateResumeSectionRequest(BaseModel):
     template_id: int
-    section_name: str
+    section_name: Optional[str] = None  # Now optional
     raw_input: str
     session_id: str  # Changed from user_id to session_id
 
@@ -85,15 +139,18 @@ class GenerateResumeSectionRequest(BaseModel):
             raise ValueError('Invalid template ID')
         return v
 
-    @validator('section_name')
+    @validator('section_name', pre=True, always=True)
     def validate_section_name(cls, v):
+        # Allow None or 'auto' for section inference
         valid_sections = [
             'basics', 'work', 'education', 'skills', 'projects', 
             'awards', 'languages', 'interests', 'volunteer', 
             'publications', 'references'
         ]
+        if v is None or v == 'auto':
+            return v
         if v not in valid_sections:
-            raise ValueError(f'Invalid section name. Must be one of: {valid_sections}')
+            raise ValueError(f'Invalid section name. Must be one of: {valid_sections}, or None/"auto" for inference')
         return v
 
     @validator('raw_input')
@@ -115,11 +172,10 @@ class CreateResumeRequest(BaseModel):
     title: Optional[str] = None
     user_email: str
 
-class GenerateResumeSectionResponse(BaseModel):
+class GenerateResumeResponse(BaseModel):
     status: str
-    rephrased_content: str
-    resume_completeness_summary: ResumeCompletenessSummary
-    validation_issues: Optional[List[str]] = None
+    json_resume: dict
+    quality_checklist: dict
 
 class TemplateInfo(BaseModel):
     id: str
@@ -154,7 +210,8 @@ template_service = TemplateService()
 resume_renderer = ResumeRenderer()
 
 # Mount static files for template previews
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.on_event("startup")
 async def startup_event():
@@ -308,7 +365,7 @@ async def get_recent_logs(limit: int = 100):
     except FileNotFoundError:
         return {"logs": [], "total_lines": 0}
 
-@app.post("/generate-resume-section", response_model=GenerateResumeSectionResponse)
+@app.post("/generate-resume-section", response_model=GenerateResumeResponse)
 async def generate_resume_section(
     request: GenerateResumeSectionRequest,
     db: AsyncSession = Depends(get_db)
@@ -344,11 +401,16 @@ async def generate_resume_section(
         # Get current resume data from database for context
         current_resume_data = db_service.resume_to_resume_data(resume)
         
+        # Infer section if needed
+        section_name = request.section_name
+        if section_name is None or section_name == "auto":
+            section_name = llm_infer_section_from_input(request.raw_input, current_resume_data.json_resume.dict() if current_resume_data and current_resume_data.json_resume else None)
+        
         # Generate resume content using AI agent with current context
         agent = get_ai_agent()
         result = await agent.generate_section(
             template_id=request.template_id,
-            section_name=request.section_name,
+            section_name=section_name,
             raw_input=request.raw_input,
             current_resume_data=current_resume_data
         )
@@ -357,78 +419,58 @@ async def generate_resume_section(
         # The AI agent should only extract what's explicitly provided
         updated_json_resume = current_resume_data.json_resume.dict()
         
-        # Merge only the data that was actually provided and processed
+        # Merge all top-level fields from the LLM output
         if "updated_section" in result and result["updated_section"]:
             try:
                 section_data = json.loads(result["updated_section"])
-                # Only update sections with actual data, don't assume missing fields
-                if request.section_name == "basics" and "basics" in section_data:
-                    if updated_json_resume.get("basics") is None:
-                        updated_json_resume["basics"] = {}
-                    # Only update fields that have actual values
-                    for key, value in section_data["basics"].items():
+                # If the LLM output is just a dict with basics fields, treat as basics
+                if isinstance(section_data, dict):
+                    # If it looks like a single section (e.g., only 'work', 'education', 'skills')
+                    if set(section_data.keys()).issubset({"work", "education", "skills", "projects", "awards", "languages", "interests", "volunteer", "publications", "references"}):
+                        for key, value in section_data.items():
+                            if value and value != "Unknown" and value != "N/A":
+                                updated_json_resume[key] = value
+                    else:
+                        # Merge all top-level fields
+                        for key, value in section_data.items():
+                            if value and value != "Unknown" and value != "N/A":
+                                updated_json_resume[key] = value
+                        # Recursively promote sections from nested dicts (e.g., basics)
+                        updated_json_resume = promote_sections_to_top_level(updated_json_resume)
+                elif isinstance(section_data, list):
+                    # If the LLM output is a list, assign to the section_name
+                    updated_json_resume[request.section_name] = section_data
+                else:
+                    # Fallback: merge all top-level fields
+                    for key, value in section_data.items():
                         if value and value != "Unknown" and value != "N/A":
-                            updated_json_resume["basics"][key] = value
-                elif request.section_name == "work" and "work" in section_data:
-                    # Only add work experience if it has required fields
-                    work_data = section_data["work"]
-                    if work_data and isinstance(work_data, list):
-                        valid_work = []
-                        for work in work_data:
-                            # Only include if we have company name and position
-                            if work.get("name") and work.get("position") and work.get("name") != "Company Name":
-                                valid_work.append(work)
-                        if valid_work:
-                            updated_json_resume["work"] = valid_work
-                elif request.section_name == "education" and "education" in section_data:
-                    # Only add education if it has required fields
-                    edu_data = section_data["education"]
-                    if edu_data and isinstance(edu_data, list):
-                        valid_edu = []
-                        for edu in edu_data:
-                            # Only include if we have institution
-                            if edu.get("institution") and edu.get("institution") != "University Name":
-                                valid_edu.append(edu)
-                        if valid_edu:
-                            updated_json_resume["education"] = valid_edu
-                elif request.section_name == "skills" and "skills" in section_data:
-                    # Only add skills if they have actual names
-                    skills_data = section_data["skills"]
-                    if skills_data and isinstance(skills_data, list):
-                        valid_skills = []
-                        for skill in skills_data:
-                            if skill.get("name") and skill.get("name") != "Skill":
-                                valid_skills.append(skill)
-                        if valid_skills:
-                            updated_json_resume["skills"] = valid_skills
-                elif request.section_name == "projects" and "projects" in section_data:
-                    # Only add projects if they have actual names
-                    projects_data = section_data["projects"]
-                    if projects_data and isinstance(projects_data, list):
-                        valid_projects = []
-                        for project in projects_data:
-                            if project.get("name") and project.get("name") != "Project Name":
-                                valid_projects.append(project)
-                        if valid_projects:
-                            updated_json_resume["projects"] = valid_projects
-                elif request.section_name == "awards" and "awards" in section_data:
-                    updated_json_resume["awards"] = section_data["awards"]
-                elif request.section_name == "languages" and "languages" in section_data:
-                    updated_json_resume["languages"] = section_data["languages"]
-                elif request.section_name == "interests" and "interests" in section_data:
-                    updated_json_resume["interests"] = section_data["interests"]
-                elif request.section_name == "volunteer" and "volunteer" in section_data:
-                    updated_json_resume["volunteer"] = section_data["volunteer"]
-                elif request.section_name == "publications" and "publications" in section_data:
-                    updated_json_resume["publications"] = section_data["publications"]
-                elif request.section_name == "references" and "references" in section_data:
-                    updated_json_resume["references"] = section_data["references"]
+                            updated_json_resume[key] = value
+                    updated_json_resume = promote_sections_to_top_level(updated_json_resume)
             except json.JSONDecodeError:
-                # If the AI response isn't valid JSON, keep the existing data
                 pass
         
         # Clean up null values from the entire resume data
         updated_json_resume = clean_null_values(updated_json_resume)
+        checklist_generator = QualityChecklistGenerator()
+        # For skip-intent, ensure skip detection is applied to all possible field paths
+        skipped_fields = checklist_generator.detect_skipped_fields(request.raw_input)
+        def expand_skipped_fields(json_resume, skipped_fields):
+            expanded = set()
+            def walk(obj, path=""):
+                if isinstance(obj, dict):
+                    for k, v in obj.items():
+                        full_path = f"{path}.{k}" if path else k
+                        if k in skipped_fields or full_path in skipped_fields:
+                            expanded.add(full_path)
+                        walk(v, full_path)
+                elif isinstance(obj, list):
+                    for idx, item in enumerate(obj):
+                        full_path = f"{path}[{idx}]"
+                        walk(item, full_path)
+            walk(json_resume)
+            return expanded
+        skipped_fields = expand_skipped_fields(updated_json_resume, skipped_fields)
+        quality_checklist = checklist_generator.generate(updated_json_resume, skipped_fields=skipped_fields)
         
         # Validate the updated resume data against JSON Resume schema
         validator = JSONResumeValidator()
@@ -437,7 +479,7 @@ async def generate_resume_section(
         # Save the processed section to database
         db_service.save_resume_section(
             resume_id=resume.id,
-            section_name=request.section_name,
+            section_name=section_name,
             original_input=request.raw_input,
             processed_content={
                 "rephrased_content": result["rephrased_content"],
@@ -445,18 +487,10 @@ async def generate_resume_section(
             }
         )
         
-        # Generate smart completeness summary for Voiceflow
-        completeness_analyzer = CompletenessAnalyzer()
-        smart_completeness = completeness_analyzer.analyze_completeness(
-            current_resume_data.json_resume, 
-            request.template_id
-        )
-        
-        # Update resume data in database with the complete updated data
+        # Update resume data in database
         db_service.update_resume_data(
-            resume_id=resume.id,
-            json_resume_data=updated_json_resume,
-            completeness_summary=smart_completeness.dict()
+            resume_id=session.resume_id,
+            json_resume_data=updated_json_resume
         )
         
         # Send real-time update via WebSocket
@@ -464,26 +498,31 @@ async def generate_resume_section(
             json.dumps({
                 "type": "resume_update",
                 "resume_id": resume.id,
-                "section": request.section_name,
+                "section": section_name,
                 "content": result["rephrased_content"],
-                "completeness": smart_completeness.dict(),
+                "completeness": None, # No longer used
                 "validation_issues": validation_result["issues"] if not validation_result["is_valid"] else []
             }),
             request.session_id
         )
         
-        return GenerateResumeSectionResponse(
+        return GenerateResumeResponse(
             status=result["status"],
-            rephrased_content=result["rephrased_content"],
-            resume_completeness_summary=smart_completeness,
-            validation_issues=validation_result["issues"] if not validation_result["is_valid"] else None
+            json_resume=updated_json_resume,
+            quality_checklist=quality_checklist
         )
         
     except ValueError as e:
+        print("ValueError in generate_resume_section:", e)
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException as e:
+        print("HTTPException in generate_resume_section:", e)
+        traceback.print_exc()
+        raise  # Let FastAPI handle it and return the correct status code/message
     except Exception as e:
-        # Log the error for debugging
-        print(f"Error in generate_resume_section: {str(e)}")
+        print("Exception in generate_resume_section:", e)
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/resumes")
@@ -675,15 +714,19 @@ async def get_voiceflow_guidance(resume_id: int, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail=f"Error getting Voiceflow guidance: {str(e)}")
 
 @app.get("/templates", response_model=List[TemplateInfo])
-async def get_templates():
+async def get_templates(request: Request):
     """Get available JSON Resume themes"""
     templates = template_service.get_available_templates()
+    base_url = str(request.base_url).rstrip("/")
     return [
         TemplateInfo(
             id=str(template.id),
             name=template.name,
             description=template.description,
-            preview_url=template.preview_url,
+            preview_url=(
+                template.preview_url if (template.preview_url and template.preview_url.startswith("http"))
+                else f"{base_url}{template.preview_url}" if template.preview_url else None
+            ),
             npm_package=template.npm_package,
             version=template.version,
             author=template.author

@@ -75,8 +75,8 @@ class ResumeBuilderTest:
         if response.status_code == 200:
             result = response.json()
             print(f"Status: {result['status']}")
-            print(f"Rephrased Content: {result['rephrased_content'][:100]}...")
-            print(f"Completeness: {result['resume_completeness_summary']['basics']}")
+            print(f"json_resume keys: {list(result['json_resume'].keys())}")
+            print(f"Checklist sample: {list(result['quality_checklist'].items())[:5]}")
         return response.status_code == 200
     
     def test_generate_work(self):

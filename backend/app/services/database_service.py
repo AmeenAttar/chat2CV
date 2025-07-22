@@ -91,31 +91,13 @@ class DatabaseService:
                 "theme": template_id
             }
         }
-        
-        # Create default completeness summary
-        completeness_summary = {
-            "basics": "not_started",
-            "work": "not_started",
-            "education": "not_started",
-            "skills": "not_started",
-            "projects": "not_started",
-            "awards": "not_started",
-            "languages": "not_started",
-            "interests": "not_started",
-            "volunteer": "not_started",
-            "publications": "not_started",
-            "references": "not_started"
-        }
-        
         db_resume = Resume(
             user_id=user_id,
             template_id=template_id,
             title=title or f"Resume - Template {template_id}",
             json_resume_data=json_resume_data,
-            schema_version="v1.0.0",
-            completeness_summary=completeness_summary
+            schema_version="v1.0.0"
         )
-        
         self.db.add(db_resume)
         self.db.commit()
         self.db.refresh(db_resume)
@@ -218,12 +200,11 @@ class DatabaseService:
                 original_input=original_input
             )
     
-    def update_resume_data(self, resume_id: int, json_resume_data: Dict[str, Any], completeness_summary: Dict[str, Any]) -> bool:
-        """Update resume data and completeness summary"""
+    def update_resume_data(self, resume_id: int, json_resume_data: Dict[str, Any]) -> bool:
+        """Update resume data only (no completeness summary)"""
         resume = self.get_resume_by_id(resume_id)
         if resume:
             resume.json_resume_data = json_resume_data
-            resume.completeness_summary = completeness_summary
             resume.updated_at = datetime.utcnow()
             self.db.commit()
             return True
@@ -307,34 +288,22 @@ class DatabaseService:
     
     # Resume data conversion
     def resume_to_resume_data(self, resume: Resume) -> ResumeData:
-        """Convert database Resume to ResumeData model"""
+        """Convert database Resume to ResumeData model (no completeness summary)"""
         return ResumeData(
             user_id=str(resume.user_id),
             template_id=resume.template_id,
-            json_resume=JSONResume(**resume.json_resume_data),
-            completeness_summary=resume.completeness_summary or {}
+            json_resume=JSONResume(**resume.json_resume_data)
         )
     
     def resume_data_to_resume(self, resume_data: ResumeData, user_id: int) -> Resume:
-        """Convert ResumeData to database Resume model"""
+        """Convert ResumeData to database Resume model (no completeness summary)"""
         return Resume(
             user_id=user_id,
             template_id=resume_data.template_id,
-            json_resume_data=resume_data.json_resume.dict(),
-            completeness_summary=resume_data.completeness_summary
+            json_resume_data=resume_data.json_resume.dict()
         )
     
     # Utility methods
-    def update_resume_completeness(self, resume_id: int, section_name: str, status: str) -> bool:
-        """Update the completeness summary for a resume section"""
-        resume = self.get_resume_by_id(resume_id)
-        if resume and resume.completeness_summary:
-            resume.completeness_summary[section_name] = status
-            resume.updated_at = datetime.utcnow()
-            self.db.commit()
-            return True
-        return False
-    
     def get_resume_with_sections(self, resume_id: int) -> Optional[Resume]:
         """Get resume with all its sections"""
         return self.db.query(Resume).filter(Resume.id == resume_id).first()

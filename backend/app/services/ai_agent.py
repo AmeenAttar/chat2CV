@@ -4,21 +4,20 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import asyncio
 
-from langchain.agents import AgentExecutor, initialize_agent, AgentType
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.tools import tool
+# LANGCHAIN DEPRECATED: All LangChain-related code is now commented out.
+# from langchain.agents import AgentExecutor, initialize_agent, AgentType
+# from langchain_openai import ChatOpenAI
+# from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+# from langchain.tools import tool
 
 # Import our services
-from app.services.llama_index_rag import LlamaIndexRAGService
+# Remove: from app.services.llama_index_rag import LlamaIndexRAGService
 from app.services.database_service import DatabaseService
 from app.services.template_aware_parser import TemplateAwareQualityAssurance
 
 from app.models.resume import (
     ResumeData, 
     ResumeSection, 
-    ResumeCompletenessSummary, 
-    SectionStatus,
     GenerateResumeSectionResult,
     WorkExperience,
     Education,
@@ -41,7 +40,7 @@ class ResumeWriterAgent:
         self.db_service = db_service
         
         # Initialize RAG service
-        self.rag_service = LlamaIndexRAGService()
+        # Remove: self.rag_service = LlamaIndexRAGService()
         
         # Initialize template-aware quality assurance
         self.qa_service = TemplateAwareQualityAssurance()
@@ -53,68 +52,71 @@ class ResumeWriterAgent:
         else:
             print("⚠️  Using in-memory storage (no database service provided)")
     
-    def _get_llm(self):
-        """Get LLM instance (lazy initialization)"""
-        if self.llm is None:
-            try:
-                self.llm = ChatOpenAI(
-                    model="gpt-3.5-turbo",  # Free tier model
-                    temperature=0.7,
-                    api_key=os.getenv("OPENAI_API_KEY")
-                )
-                print("✅ LLM initialized successfully")
-            except Exception as e:
-                print(f"Warning: Could not initialize LLM: {e}")
-                return None
-        return self.llm
+    # All code that creates or uses a LangChain agent is commented out below.
+    # def _get_llm(self):
+    #     """Get LLM instance (lazy initialization)"""
+    #     if self.llm is None:
+    #         try:
+    #             self.llm = ChatOpenAI(
+    #                 model="gpt-3.5-turbo",  # Free tier model
+    #                 temperature=0.7,
+    #                 api_key=os.getenv("OPENAI_API_KEY")
+    #             )
+    #             print("✅ LLM initialized successfully")
+    #         except Exception as e:
+    #             print(f"Warning: Could not initialize LLM: {e}")
+    #             return None
+    #     return self.llm
     
-    def _get_agent(self):
-        """Get agent instance (lazy initialization)"""
-        if self.agent is None:
-            self.agent = self._create_agent()
-        return self.agent
+    # All code that creates or uses a LangChain agent is commented out below.
+    # def _get_agent(self):
+    #     """Get agent instance (lazy initialization)"""
+    #     if self.agent is None:
+    #         self.agent = self._create_agent()
+    #     return self.agent
     
-    def _create_agent(self):
-        """Create LangChain agent with resume writing tools"""
+    # All code that creates or uses a LangChain agent is commented out below.
+    # def _create_agent(self):
+    #     """Create LangChain agent with resume writing tools"""
         
-        # Define tools for the agent using our RAG service (single parameter for older LangChain)
-        @tool
-        def get_template_guidelines(template_id: int) -> str:
-            """Retrieve template-specific guidelines for resume templates. Input should be the template name like 'professional', 'modern', 'creative'."""
-            return self.rag_service.get_template_guidelines(template_id)
+    #     # Define tools for the agent using our RAG service (single parameter for older LangChain)
+    #     @tool
+    #     def get_template_guidelines(template_id: int) -> str:
+    #         """Retrieve template-specific guidelines for resume templates. Input should be the template name like 'professional', 'modern', 'creative'."""
+    #         return self.rag_service.get_template_guidelines(template_id)
         
-        @tool
-        def get_action_verbs(industry: str) -> str:
-            """Get relevant action verbs for resume writing. Input should be the industry like 'tech', 'finance', 'marketing', or 'general'."""
-            return self.rag_service.get_action_verbs(industry)
+    #     @tool
+    #     def get_action_verbs(industry: str) -> str:
+    #         """Get relevant action verbs for resume writing. Input should be the industry like 'tech', 'finance', 'marketing', or 'general'."""
+    #         return self.rag_service.get_action_verbs(industry)
         
-        @tool
-        def get_resume_best_practices(section: str) -> str:
-            """Get best practices for a specific resume section using RAG. Input should be the section name like 'work', 'education', 'skills'."""
-            return self.rag_service.get_best_practices(section)
+    #     @tool
+    #     def get_resume_best_practices(section: str) -> str:
+    #         """Get best practices for a specific resume section using RAG. Input should be the section name like 'work', 'education', 'skills'."""
+    #         return self.rag_service.get_best_practices(section)
         
-        @tool
-        def get_industry_guidelines(industry: str) -> str:
-            """Get industry-specific resume guidelines and keywords. Input should be the industry like 'tech', 'finance', 'marketing'."""
-            return self.rag_service.get_industry_guidelines(industry)
+    #     @tool
+    #     def get_industry_guidelines(industry: str) -> str:
+    #         """Get industry-specific resume guidelines and keywords. Input should be the industry like 'tech', 'finance', 'marketing'."""
+    #         return self.rag_service.get_industry_guidelines(industry)
         
-        # Create the agent with tools
-        tools = [
-            get_template_guidelines,
-            get_action_verbs,
-            get_resume_best_practices,
-            get_industry_guidelines
-        ]
+    #     # Create the agent with tools
+    #     tools = [
+    #         get_template_guidelines,
+    #         get_action_verbs,
+    #         get_resume_best_practices,
+    #         get_industry_guidelines
+    #     ]
         
-        # Create the agent using the older LangChain API
-        agent = initialize_agent(
-            tools=tools,
-            llm=self._get_llm(),
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=True
-        )
+    #     # Create the agent using the older LangChain API
+    #     agent = initialize_agent(
+    #         tools=tools,
+    #         llm=self._get_llm(),
+    #         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    #         verbose=True
+    #     )
         
-        return agent
+    #     return agent
     
     async def generate_section(
         self, 
@@ -201,22 +203,26 @@ Steps:
 FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No other text."""
             
             # Get agent and generate content
-            agent = self._get_agent()
-            if agent and self._get_llm():
-                try:
-                    # Use the agent to generate content (older LangChain API)
-                    result = agent.run(agent_prompt)
-                    rephrased_content = result if result else ""
+            # All code that creates or uses a LangChain agent is commented out below.
+            # agent = self._get_agent()
+            # if agent and self._get_llm():
+            #     try:
+            #         # Use the agent to generate content (older LangChain API)
+            #         result = agent.run(agent_prompt)
+            #         rephrased_content = result if result else ""
                     
-                    # If agent fails, fall back to simple rephrasing
-                    if not rephrased_content or len(rephrased_content) < 10:
-                        rephrased_content = self._fallback_rephrase(raw_input, section_name, template_id)
-                except Exception as e:
-                    print(f"Agent execution failed, using fallback: {e}")
-                    rephrased_content = self._fallback_rephrase(raw_input, section_name, template_id)
-            else:
-                # Fall back to simple rephrasing if LLM is not available
-                rephrased_content = self._fallback_rephrase(raw_input, section_name, template_id)
+            #         # If agent fails, fall back to simple rephrasing
+            #         if not rephrased_content or len(rephrased_content) < 10:
+            #             rephrased_content = self._fallback_rephrase(raw_input, section_name, template_id)
+            #     except Exception as e:
+            #         print(f"Agent execution failed, using fallback: {e}")
+            #         rephrased_content = self._fallback_rephrase(raw_input, section_name, template_id)
+            # else:
+            #     # Fall back to simple rephrasing if LLM is not available
+            #     rephrased_content = self._fallback_rephrase(raw_input, section_name, template_id)
+            
+            # Fallback to simple rephrasing if LangChain is not available
+            rephrased_content = self._fallback_rephrase(raw_input, section_name, template_id)
             
             # Parse structured data from AI output and update resume data
             try:
@@ -379,7 +385,7 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
                     print(f"⚠️  Template-aware quality assurance failed: {e}")
             
             # Update completeness summary
-            completeness_summary = self._update_completeness_summary(resume_data)
+            # Remove: completeness_summary = self._update_completeness_summary(resume_data)
             
             # Save to database if using database service
             if self.db_service and resume_id:
@@ -388,7 +394,7 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
                     self.db_service.update_resume(
                         resume_id=resume_id,
                         json_resume_data=resume_data.json_resume.dict(),
-                        completeness_summary=completeness_summary.dict()
+                        # Remove: completeness_summary=completeness_summary.dict()
                     )
                     
                     # Create or update resume section with structured data
@@ -428,7 +434,7 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
                 status="success",
                 updated_section=section_name,
                 rephrased_content=rephrased_content,
-                resume_completeness_summary=completeness_summary,
+                # Remove: resume_completeness_summary=completeness_summary,
                 resume_data=resume_data
             )
             
@@ -441,9 +447,9 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
                 status="success",
                 updated_section=section_name,
                 rephrased_content=rephrased_content,
-                resume_completeness_summary=self._update_completeness_summary(
-                    self.resume_data.get(user_id, ResumeData(user_id=user_id, template_id=template_id))
-                ),
+                # Remove: resume_completeness_summary=self._update_completeness_summary(
+                #     self.resume_data.get(user_id, ResumeData(user_id=user_id, template_id=template_id))
+                # ),
                 resume_data=self.resume_data.get(user_id, ResumeData(user_id=user_id, template_id=template_id))
             )
     
@@ -454,7 +460,7 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
         """
         try:
             # Get relevant guidelines from RAG service
-            action_verbs = self.rag_service.get_action_verbs(industry)
+            # Remove: action_verbs = self.rag_service.get_action_verbs(industry)
             
             # Simple rephrasing logic
             rephrased = raw_input
@@ -468,7 +474,8 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
                 for weak_verb in weak_verbs:
                     if weak_verb in rephrased.lower():
                         # Find a suitable action verb
-                        verbs = [v.strip() for v in action_verbs.split(", ")]
+                        # Remove: verbs = [v.strip() for v in action_verbs.split(", ")]
+                        verbs = [] # Placeholder, as action_verbs is removed
                         if verbs:
                             rephrased = rephrased.lower().replace(weak_verb, verbs[0].lower())
                         break
@@ -502,15 +509,15 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
             print(f"Fallback rephrasing failed: {e}")
             return raw_input
     
-    def _update_completeness_summary(self, resume_data: ResumeData) -> ResumeCompletenessSummary:
-        """Update the completeness summary for the resume"""
-        return ResumeCompletenessSummary(
-            basics=SectionStatus.COMPLETE if resume_data.json_resume.basics else SectionStatus.NOT_STARTED,
-            work=SectionStatus.COMPLETE if resume_data.json_resume.work and len(resume_data.json_resume.work) >= 1 else SectionStatus.INCOMPLETE,
-            education=SectionStatus.COMPLETE if resume_data.json_resume.education and len(resume_data.json_resume.education) >= 1 else SectionStatus.INCOMPLETE,
-            skills=SectionStatus.COMPLETE if resume_data.json_resume.skills and len(resume_data.json_resume.skills) >= 3 else SectionStatus.INCOMPLETE,
-            projects=SectionStatus.COMPLETE if resume_data.json_resume.projects and len(resume_data.json_resume.projects) >= 1 else SectionStatus.NOT_STARTED
-        )
+    # Remove: def _update_completeness_summary(self, resume_data: ResumeData) -> ResumeCompletenessSummary:
+    # Remove:     """Update the completeness summary for the resume"""
+    # Remove:     return ResumeCompletenessSummary(
+    # Remove:         basics=SectionStatus.COMPLETE if resume_data.json_resume.basics else SectionStatus.NOT_STARTED,
+    # Remove:         work=SectionStatus.COMPLETE if resume_data.json_resume.work and len(resume_data.json_resume.work) >= 1 else SectionStatus.INCOMPLETE,
+    # Remove:         education=SectionStatus.COMPLETE if resume_data.json_resume.education and len(resume_data.json_resume.education) >= 1 else SectionStatus.INCOMPLETE,
+    # Remove:         skills=SectionStatus.COMPLETE if resume_data.json_resume.skills and len(resume_data.json_resume.skills) >= 3 else SectionStatus.INCOMPLETE,
+    # Remove:         projects=SectionStatus.COMPLETE if resume_data.json_resume.projects and len(resume_data.json_resume.projects) >= 1 else SectionStatus.NOT_STARTED
+    # Remove:     )
     
     async def get_resume_data(self, user_id: str) -> ResumeData:
         """Get resume data for a user"""
@@ -521,7 +528,8 @@ FINAL OUTPUT: Return ONLY the structured JSON data, starting with {{ or [. No ot
     
     def get_rag_health(self) -> Dict:
         """Get health status of the RAG system"""
-        return self.rag_service.health_check()
+        # Remove: return self.rag_service.health_check()
+        return {"status": "offline", "message": "RAG service is no longer available"}
     
     def _extract_basic_work_info(self, raw_input: str) -> WorkExperience:
         """Extract basic work information from raw input"""

@@ -49,7 +49,6 @@ def upgrade() -> None:
     sa.Column('template_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=255), nullable=True),
     sa.Column('json_resume_data', sa.JSON(), nullable=False),
-    sa.Column('completeness_summary', sa.JSON(), nullable=True),
     sa.Column('is_complete', sa.Boolean(), nullable=True),
     sa.Column('is_paid', sa.Boolean(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),

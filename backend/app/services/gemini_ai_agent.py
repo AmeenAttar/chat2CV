@@ -258,8 +258,7 @@ Generate the content now. Return ONLY the JSON object:
             return {
                 "status": "success",
                 "updated_section": json.dumps(cleaned_data, indent=2),
-                "rephrased_content": response_text,
-                "resume_completeness_summary": self._update_completeness(section_name)
+                "rephrased_content": response_text
             }
             
         except Exception as e:
@@ -324,25 +323,5 @@ Generate the content now. Return ONLY the JSON object:
         return {
             "status": "success",
             "updated_section": json.dumps(content, indent=2),
-            "rephrased_content": f"Mock processed content for {section_name}: {raw_input}",
-            "resume_completeness_summary": self._update_completeness(section_name),
-            "resume_data": None
-        }
-    
-    def _update_completeness(self, section_name: str) -> ResumeCompletenessSummary:
-        """Update completeness summary"""
-        summary = ResumeCompletenessSummary()
-        
-        # Map section names to completeness fields
-        section_mapping = {
-            "basics": "basics",
-            "work": "work_experience", 
-            "education": "education",
-            "skills": "skills",
-            "projects": "projects"
-        }
-        
-        if section_name in section_mapping:
-            setattr(summary, section_mapping[section_name], "complete")
-        
-        return summary 
+            "rephrased_content": f"Mock processed content for {section_name}: {raw_input}"
+        } 
